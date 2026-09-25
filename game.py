@@ -1,24 +1,65 @@
 import math
+import re
 from dataclasses import dataclass
 
 import pygame
 
-WIDTH, HEIGHT = 960, 540
+TILE = 32
+WIDTH, HEIGHT = 960, 544  # 30 x 17 tiles
 SPEED = 300       # px/s
 GRAVITY = 1800    # px/s²
 JUMP_SPEED = 650  # px/s
 MAX_FALL = 900    # px/s
 SIZE = 32
-GROUND_H = 64
 BG = (30, 30, 40)
 GREEN = (60, 170, 80)
 BLUE = (60, 120, 230)
+
+# '#' sólido, 'P' início do jogador, '.' vazio
+LEVEL = [
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    "........................................................................................................................",
+    ".......................................................................................................................#",
+    "........................................#####..........................................................................#",
+    ".................###.............####...........###.................##.................................................#",
+    "...P...........#######..............................................##.................................................#",
+    "############################..##########################....############################################################",
+]
 
 
 @dataclass
 class Input:
     move: int   # -1 esquerda, 0 parado, +1 direita
     jump: bool  # True só no frame em que o pulo foi comandado (borda de subida)
+
+
+def load_level(rows: list[str]) -> tuple[list[pygame.Rect], tuple[int, int]]:
+    assert len(rows) * TILE == HEIGHT, f"mapa precisa de {HEIGHT // TILE} linhas, tem {len(rows)}"
+    assert len({len(r) for r in rows}) == 1, "todas as linhas do mapa precisam ter o mesmo comprimento"
+    assert len(rows[0]) * TILE >= WIDTH, "fase mais estreita que a janela"
+    solids, spawns = [], []
+    for r, line in enumerate(rows):
+        for c, ch in enumerate(line):
+            if ch not in "#P.":
+                raise ValueError(f"caractere {ch!r} inválido no mapa: linha {r}, coluna {c}")
+            if ch == "P":
+                spawns.append((c * TILE, r * TILE))
+        # funde '#' vizinhos numa linha: 1 Rect por sequência, não por tile
+        for m in re.finditer("#+", line):
+            solids.append(pygame.Rect(m.start() * TILE, r * TILE, len(m[0]) * TILE, TILE))
+    if len(spawns) != 1:
+        raise ValueError(f"mapa precisa de exatamente um 'P', tem {len(spawns)}")
+    return solids, spawns[0]
 
 
 class Player:
@@ -62,18 +103,25 @@ class Player:
 
 class Game:
     def __init__(self):
-        self.player = Player(WIDTH // 2 - SIZE // 2, HEIGHT // 2)
-        self.solids = [pygame.Rect(0, HEIGHT - GROUND_H, WIDTH, GROUND_H)]
+        self.solids, self.spawn = load_level(LEVEL)
+        self.level_w = len(LEVEL[0]) * TILE
+        self.level_h = len(LEVEL) * TILE
+        self.player = Player(*self.spawn)
+        self.camera_x = 0
 
     def update(self, inp: Input, dt: float):
         p = self.player
         p.update(inp, dt, self.solids)
-        # ponytail: clamp lateral temporário, a câmera da Etapa 2 substitui
-        p.x = max(0, min(p.x, WIDTH - SIZE))
+        p.x = pygame.math.clamp(p.x, 0, self.level_w - SIZE)
         p.rect.x = round(p.x)
+        if p.rect.top > self.level_h:  # temporário: vira morte na etapa 5
+            self.player = p = Player(*self.spawn)
+        self.camera_x = pygame.math.clamp(p.rect.centerx - WIDTH // 2, 0, self.level_w - WIDTH)
 
     def draw(self, surface):
         surface.fill(BG)
+        cx = self.camera_x
         for s in self.solids:
-            pygame.draw.rect(surface, GREEN, s)
-        pygame.draw.rect(surface, BLUE, self.player.rect)
+            if s.right >= cx and s.left <= cx + WIDTH:
+                pygame.draw.rect(surface, GREEN, s.move(-cx, 0))
+        pygame.draw.rect(surface, BLUE, self.player.rect.move(-cx, 0))
