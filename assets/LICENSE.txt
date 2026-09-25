@@ -6,3 +6,6 @@ backgrounds.png  - Pixel Platformer (tilemap-backgrounds_packed.png)
 industrial.png   - Pixel Platformer Industrial Expansion (tilemap_packed.png)
 font.ttf         - Kenney Fonts (Kenney Pixel.ttf)
 font_ui.ttf      - Kenney Fonts (Kenney Future Narrow.ttf)
+
+hand_landmarker.task - MediaPipe Hand Landmarker (Google), licença Apache 2.0
+  https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
