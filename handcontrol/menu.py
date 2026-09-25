@@ -57,9 +57,8 @@ class Menu:
         draw_text(screen, "um platformer controlado pela sua mao", 36, DIM, (cx, 205))
         if int(self.t * 2) % 2 == 0:
             draw_text(screen, "ESPACO ou INDICADOR DIREITO para jogar", 48, YELLOW, (cx, 290))
-        draw_text(screen, "C  calibrar camera", 40, GREEN, (cx, 345))
-        draw_text(screen, "1-5 escolhe a fase   A/D anda   ESPACO pula   V mostra/esconde camera   ESC sai",
-                  26, DIM, (cx, 395))
+        draw_text(screen, "ENTER  fases e estrelas        C  calibrar camera", 36, GREEN, (cx, 345))
+        draw_text(screen, "A/D anda   ESPACO pula   V camera   M som   ESC sai", 26, DIM, (cx, 395))
         if tracker.error:
             status, color = f"camera: {tracker.error}", RED
         elif not tracker.ready:

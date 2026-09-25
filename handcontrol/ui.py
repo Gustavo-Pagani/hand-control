@@ -33,5 +33,17 @@ def dim(surface, alpha=160):
     surface.blit(layer, (0, 0))
 
 
+def draw_star(surface, center, r, filled):
+    import math
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        rr = r if i % 2 == 0 else r * 0.45
+        pts.append((center[0] + math.cos(a) * rr, center[1] + math.sin(a) * rr))
+    if filled:
+        pygame.draw.polygon(surface, YELLOW, pts)
+    pygame.draw.polygon(surface, YELLOW if filled else DIM, pts, 2)
+
+
 def fmt_time(t):
     return f"{int(t // 60):02d}:{t % 60:04.1f}"

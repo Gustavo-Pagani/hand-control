@@ -1,11 +1,19 @@
-"""Mapa ASCII -> LevelData (colisão, spawns, tiles para desenhar)."""
+"""Mapa ASCII -> LevelData (colisão, spawns, blocos, tiles para desenhar)."""
 import re
 from dataclasses import dataclass, field
 
 import pygame
 
 from . import assets
-from .config import HEIGHT, TILE, VALID_CHARS, WIDTH
+from .config import HEART_EVERY, HEIGHT, TILE, VALID_CHARS, WIDTH
+
+
+@dataclass
+class QBlock:
+    rect: pygame.Rect
+    content: str          # "coin" | "heart"
+    used: bool = False
+    bump: float = 0.0     # s restantes do pulinho ao ser batido
 
 
 @dataclass
@@ -16,10 +24,15 @@ class LevelData:
     enemies: list = field(default_factory=list)   # (x, y, kind)
     spikes: list = field(default_factory=list)
     coins: list = field(default_factory=list)
+    qblocks: list = field(default_factory=list)
+    checkpoint: pygame.Rect = None
     spawn: tuple = (0, 0)
     goal: pygame.Rect = None
     w: int = 0
     h: int = 0
+
+
+KINDS = {"E": "walker", "H": "hopper", "C": "cannon", "B": "bee"}
 
 
 def load_level(rows: list[str], theme: str = "grass") -> LevelData:
@@ -36,14 +49,20 @@ def load_level(rows: list[str], theme: str = "grass") -> LevelData:
             x, y = c * TILE, r * TILE
             if ch == "P":
                 spawns.append((x, y))
-            elif ch in "EH":
-                lv.enemies.append((x, y, "walker" if ch == "E" else "hopper"))
+            elif ch in KINDS:
+                lv.enemies.append((x, y, KINDS[ch]))
             elif ch == "^":
                 lv.spikes.append(pygame.Rect(x, y + TILE - 12, TILE, 12))
             elif ch == "o":
                 lv.coins.append(pygame.Rect(x + 10, y + 10, 16, 16))
             elif ch == "G":
                 goals.append(pygame.Rect(x, y, TILE, TILE))
+            elif ch == "K":
+                lv.checkpoint = pygame.Rect(x, y, TILE, TILE)
+            elif ch == "?":
+                rect = pygame.Rect(x, y, TILE, TILE)
+                lv.solids.append(rect)
+                lv.qblocks.append(QBlock(rect, "heart" if len(lv.qblocks) % HEART_EVERY == HEART_EVERY - 1 else "coin"))
             elif ch == "#" and terrain:
                 top = r == 0 or rows[r - 1][c] != "#"
                 lv.tiles.append((assets.pick(terrain["top" if top else "fill"], (r, c)), x, y))

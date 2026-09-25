@@ -20,6 +20,8 @@ THEMES = {
 TERRAIN = {}   # tema -> {"top": [surf...], "fill": [surf...], "deco": [surf...]}
 BG = {}        # tema -> {"sky": color, "hills": [surf, surf], "fill": surf}
 COIN, FLAG, SPIKE = [], [], None
+QBLOCK, CHECKPOINT = [], []   # [cheio, usado], [inativo, ativo]
+ROCK = GEM = POLE = None
 HEART = {}
 PLAYER = {}    # "idle" | "walk" | "jump" -> [surf...]
 ENEMY = {}     # kind -> [surf...]
@@ -68,7 +70,16 @@ def load():
     PLAYER.update(idle=[_cut(chars, 0, 0, 24)], walk=[_cut(chars, 0, 0, 24), _cut(chars, 0, 1, 24)],
                   jump=[_cut(chars, 0, 1, 24)])
     ENEMY.update(walker=[_cut(chars, 2, 0, 24), _cut(chars, 2, 1, 24)],
-                 hopper=[_cut(chars, 1, 2, 24), _cut(chars, 1, 3, 24)])
+                 hopper=[_cut(chars, 1, 2, 24), _cut(chars, 1, 3, 24)],
+                 cannon=[_cut(chars, 1, 6, 24), _cut(chars, 1, 7, 24)],
+                 bee=[_cut(chars, 2, 6, 24), _cut(chars, 2, 7, 24)])
+    global ROCK, GEM
+    ROCK = _cut(tiles, 0, 8, 18)
+    GEM = _cut(tiles, 3, 7, 18)
+    QBLOCK[:] = [_cut(tiles, 0, 10, 18), _cut(tiles, 1, 10, 18)]
+    gray = FLAG[0].copy()
+    gray.fill((120, 120, 130), special_flags=pygame.BLEND_RGB_MULT)
+    CHECKPOINT[:] = [gray, FLAG[0]]
 
 
 def font(size, ui=False):

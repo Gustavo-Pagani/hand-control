@@ -7,7 +7,8 @@ from .config import GRAVITY, MAX_FALL
 
 
 def move_body(body, dt: float, solids: list[pygame.Rect]):
-    """body tem x, y (float), vx, vy, rect, on_ground, hit_wall. Move X e resolve, move Y e resolve."""
+    """body tem x, y (float), vx, vy, rect, on_ground, hit_wall. Move X e resolve, move Y e resolve.
+    Também seta hit_ceiling: o Rect em que bateu a cabeça neste frame, ou None."""
     body.vy = min(body.vy + GRAVITY * dt, MAX_FALL)
 
     body.x += body.vx * dt
@@ -27,6 +28,7 @@ def move_body(body, dt: float, solids: list[pygame.Rect]):
     # de gravidade parado no chão não encostam e on_ground piscaria frame sim, frame não
     body.rect.y = math.ceil(body.y) if body.vy > 0 else math.floor(body.y)
     body.on_ground = False
+    body.hit_ceiling = None
     for s in solids:
         if body.rect.colliderect(s):
             if body.vy > 0:
@@ -34,5 +36,6 @@ def move_body(body, dt: float, solids: list[pygame.Rect]):
                 body.on_ground = True
             else:
                 body.rect.top = s.bottom
+                body.hit_ceiling = s
             body.vy = 0
             body.y = body.rect.y
