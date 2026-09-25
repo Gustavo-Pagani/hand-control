@@ -5,7 +5,7 @@ from . import assets, sound
 from .config import HEIGHT, STARS, WIDTH
 from .levels import LEVELS
 from .shop import Cursor
-from .ui import DIM, GREEN, WHITE, YELLOW, dim, draw_panel, draw_star, draw_text
+from .ui import DIM, GREEN, WHITE, YELLOW, dim, draw_fingers, draw_panel, draw_star, draw_text
 
 
 class LevelSelect:
@@ -42,13 +42,14 @@ class LevelSelect:
             if i == self.cursor.idx:
                 pygame.draw.rect(screen, (50, 48, 70), row, border_radius=6)
                 pygame.draw.rect(screen, YELLOW, row, 2, border_radius=6)
-            pygame.draw.rect(screen, assets.BG[theme]["sky"], (row.x + 12, y + 6, 34, 34), border_radius=4)
-            draw_text(screen, f"{i + 1}. {name}", 34, WHITE if unlocked else DIM, (row.x + 62, y + 22), align="midleft")
+            draw_fingers(screen, (row.x + 10, y + 6), i + 1, YELLOW if i == self.cursor.idx else DIM)
+            pygame.draw.rect(screen, assets.BG[theme]["sky"], (row.x + 50, y + 6, 34, 34), border_radius=4)
+            draw_text(screen, f"{i + 1}. {name}", 34, WHITE if unlocked else DIM, (row.x + 100, y + 22), align="midleft")
             got = self.progress["stars"].get(i, set())
             for j, (key, label) in enumerate(STARS):
                 draw_star(screen, (row.right - 150 + j * 44, y + 23), 15, key in got)
             if not unlocked:
                 draw_text(screen, "bloqueada", 22, DIM, (row.right - 240, y + 22), align="midright")
-        draw_text(screen, "esquerda escolhe   duas maos abertas: jogar   tres dedos direita: voltar",
+        draw_text(screen, "dedos da direita escolhem (aberta+polegar = 5)   dois punhos: jogar   tres dedos esquerda: voltar",
                   20, DIM, (cx, panel.bottom - 24))
         draw_text(screen, "estrelas: completa · todas as moedas · sem morrer", 20, GREEN, (cx, panel.bottom - 48))

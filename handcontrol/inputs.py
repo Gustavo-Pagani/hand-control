@@ -10,6 +10,7 @@ class Input:
     jump: bool = False     # True só no frame em que o pulo foi comandado (borda de subida)
     confirm: bool = False  # menus: confirmar / comprar / continuar (borda)
     back: bool = False     # menus: voltar / sair (borda)
+    select: int = 0        # menus: item escolhido pelo número de dedos da mão direita (1-5), 0 = nenhum
 
 
 def read_keyboard(events) -> Input:
@@ -17,8 +18,9 @@ def read_keyboard(events) -> Input:
     keys = pygame.key.get_pressed()
     down = [e.key for e in events if e.type == pygame.KEYDOWN]
     move = (keys[pygame.K_d] or keys[pygame.K_RIGHT]) - (keys[pygame.K_a] or keys[pygame.K_LEFT])
+    select = next((k - pygame.K_0 for k in down if pygame.K_1 <= k <= pygame.K_5), 0)
     return Input(move, pygame.K_SPACE in down or pygame.K_w in down,
-                 pygame.K_RETURN in down, pygame.K_BACKSPACE in down)
+                 pygame.K_RETURN in down, pygame.K_BACKSPACE in down, select)
 
 
 class Hold:
@@ -51,12 +53,13 @@ class Hold:
 class GestureInput:
     """Gestos estáveis das duas mãos -> Input.
 
-    Mão esquerda: INDEX anda para frente, THUMB para trás, resto para.
-    Mão direita: INDEX pula uma vez na borda de subida (segurar não repete).
-    Duas mãos OPEN seguradas: confirmar. THREE na direita segurado: voltar.
+    Jogo: esquerda INDEX anda para frente, THUMB para trás, resto para; direita INDEX pula uma vez (borda).
+    Menus: número de dedos da direita escolhe o item (select); dois punhos segurados confirmam;
+    THREE na esquerda segurado volta.
     """
 
     MOVE = {"INDEX": 1, "THUMB": -1}
+    COUNT = {"INDEX": 1, "TWO": 2, "THREE": 3, "OPEN": 4, "FIVE": 5}
 
     def __init__(self, confirm_seconds=0.6, back_seconds=0.8):
         self.prev_right = "NONE"
@@ -67,10 +70,10 @@ class GestureInput:
         left, right = stable.get("L", "NONE"), stable.get("R", "NONE")
         jump = right == "INDEX" and self.prev_right != "INDEX"
         self.prev_right = right
-        confirm = self.confirm.update(left == "OPEN" and right == "OPEN", dt)
-        back = self.back.update(right == "THREE", dt)
-        return Input(self.MOVE.get(left, 0), jump, confirm, back)
+        confirm = self.confirm.update(left == "FIST" and right == "FIST", dt)
+        back = self.back.update(left == "THREE", dt)
+        return Input(self.MOVE.get(left, 0), jump, confirm, back, self.COUNT.get(right, 0))
 
 
 def merge(a: Input, b: Input) -> Input:
-    return Input(a.move or b.move, a.jump or b.jump, a.confirm or b.confirm, a.back or b.back)
+    return Input(a.move or b.move, a.jump or b.jump, a.confirm or b.confirm, a.back or b.back, a.select or b.select)

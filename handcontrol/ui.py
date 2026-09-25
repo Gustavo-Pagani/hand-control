@@ -45,5 +45,15 @@ def draw_star(surface, center, r, filled):
     pygame.draw.polygon(surface, YELLOW if filled else DIM, pts, 2)
 
 
+def draw_fingers(surface, pos, n, color=WHITE):
+    """Pictograma de mão com n dedos levantados (1-4 dedos; 5 = com polegar). pos = canto superior esquerdo."""
+    x, y = pos
+    pygame.draw.rect(surface, color, (x + 4, y + 16, 22, 16), border_radius=4)   # palma
+    for i in range(min(n, 4)):
+        pygame.draw.rect(surface, color, (x + 5 + i * 5, y + 2, 4, 15), border_radius=2)
+    if n >= 5:
+        pygame.draw.rect(surface, color, (x - 2, y + 12, 6, 12), border_radius=2)  # polegar
+
+
 def fmt_time(t):
     return f"{int(t // 60):02d}:{t % 60:04.1f}"

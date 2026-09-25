@@ -11,13 +11,16 @@ from .vision import FINGER_NAMES, save_calibration
 
 # (lado, gesto, nome curto, instrução)
 STEPS = [("L", "FIST", "ESQUERDA: PUNHO", "mao esquerda fechada (parado)"),
-         ("L", "INDEX", "ESQUERDA: INDICADOR", "mao esquerda, so o indicador (frente / proximo)"),
-         ("L", "THUMB", "ESQUERDA: POLEGAR", "mao esquerda, so o polegar, joinha (tras / anterior)"),
-         ("L", "THREE", "ESQUERDA: TRES DEDOS", "indicador, medio e anelar (pular passo)"),
+         ("L", "INDEX", "ESQUERDA: INDICADOR", "so o indicador (frente)"),
+         ("L", "THUMB", "ESQUERDA: POLEGAR", "so o polegar, joinha (tras)"),
+         ("L", "THREE", "ESQUERDA: TRES DEDOS", "indicador, medio e anelar (voltar / sair)"),
          ("R", "FIST", "DIREITA: PUNHO", "mao direita fechada (parado)"),
-         ("R", "INDEX", "DIREITA: INDICADOR", "mao direita, so o indicador (pulo)"),
-         ("R", "THREE", "DIREITA: TRES DEDOS", "indicador, medio e anelar (voltar / sair)"),
-         ("B", "OPEN", "DUAS MAOS ABERTAS", "as duas maos abertas (confirmar)")]
+         ("R", "INDEX", "DIREITA: 1 DEDO", "so o indicador (pulo / item 1)"),
+         ("R", "TWO", "DIREITA: 2 DEDOS", "indicador e medio (item 2)"),
+         ("R", "THREE", "DIREITA: 3 DEDOS", "indicador, medio e anelar (item 3)"),
+         ("R", "OPEN", "DIREITA: 4 DEDOS", "mao aberta com o polegar dobrado (item 4)"),
+         ("R", "FIVE", "DIREITA: 5 DEDOS", "mao aberta com o polegar (item 5)"),
+         ("B", "FIST", "DOIS PUNHOS", "as duas maos fechadas (confirmar)")]
 HOLD = 1.0  # s segurando o gesto certo para o passo contar
 SIDE_NAME = {"L": "esquerda", "R": "direita", "B": "duas maos"}
 
@@ -37,7 +40,7 @@ class Calibration:
         self.msg = ""
         self.thresh = None
         self.t = 0.0
-        self.skip = Hold(1.5)   # tres dedos na esquerda seguradas pulam o passo
+        self.skip = Hold(1.5)   # dois punhos segurados pulam o passo
 
     def _matches(self, side, target):
         st, lm = self.tracker.stable, self.tracker.landmarks
@@ -56,7 +59,7 @@ class Calibration:
         if tr.error or not tr.ready:
             return None
         side, target, *_ = STEPS[self.step]
-        if self.skip.update(tr.stable["L"] == "THREE" and target != "THREE", DT):
+        if self.skip.update(tr.stable["L"] == "FIST" and tr.stable["R"] == "FIST" and side != "B" and target != "FIST", DT):
             self.results[(side, target)] = False
             self._advance()
         elif self._matches(side, target):
@@ -86,16 +89,18 @@ class Calibration:
         thresh = dict(self.tracker.thresh)
         msgs = []
         s = self.samples
-        if s["INDEX"] and s["FIST"]:
-            index_open = statistics.median(m[1] for m in s["INDEX"])       # indicador levantado
+        opened = s["INDEX"] + s["OPEN"] + s["FIVE"]
+        if opened and s["FIST"]:
+            index_open = statistics.median(m[1] for m in opened)           # indicador levantado
             fist_high = statistics.median(max(m[1:]) for m in s["FIST"])   # dedo mais aberto no punho
             if index_open > fist_high:
                 thresh["fingers"] = round((index_open + fist_high) / 2, 3)
             else:
                 msgs.append("dedos: indicador e punho parecidos demais, limiar mantido")
-        closed = s["FIST"] + s["INDEX"]
-        if s["THUMB"] and closed:
-            thumb_open = statistics.median(m[0] for m in s["THUMB"])
+        closed = s["FIST"] + s["INDEX"] + s["OPEN"]
+        thumbs = s["THUMB"] + s["FIVE"]
+        if thumbs and closed:
+            thumb_open = statistics.median(m[0] for m in thumbs)
             thumb_closed = statistics.median(m[0] for m in closed)
             if thumb_open > thumb_closed:
                 thresh["thumb"] = round((thumb_open + thumb_closed) / 2, 3)
@@ -121,7 +126,7 @@ class Calibration:
                 mark, color = ">", YELLOW
             else:
                 mark, color = "-", DIM
-            draw_text(screen, f"{mark}  {i + 1}. {name}", 22, color, (px + 24, py + 12 + i * 24), align="topleft")
+            draw_text(screen, f"{mark} {i + 1}. {name}", 20, color, (px + 24, py + 10 + i * 20), align="topleft")
         if self.done:
             ok, n = sum(self.results.values()), len(STEPS)
             draw_text(screen, "Calibrado!" if ok == n else "Concluido", 44, GREEN if ok == n else YELLOW,
@@ -132,7 +137,7 @@ class Calibration:
                       (px + 240, py + 290))
             if self.msg:
                 draw_text(screen, self.msg, 18, YELLOW, (px + 240, py + 320))
-            draw_text(screen, "duas maos abertas: voltar ao menu", 26, DIM, (px + 240, py + 430))
+            draw_text(screen, "dois punhos: voltar ao menu", 26, DIM, (px + 240, py + 430))
             return
         side, _, name, hint = STEPS[self.step]
         draw_text(screen, f"Mostre: {name}", 36, YELLOW, (px + 240, py + 240))
@@ -149,5 +154,5 @@ class Calibration:
             pygame.draw.circle(screen, DIM, (cx, py + 372), 14, 2)
             draw_text(screen, fname, 18, DIM, (cx, py + 398))
             draw_text(screen, f"{m:.2f}", 18, DIM, (cx, py + 416))
-        draw_text(screen, "tres dedos esquerda (segure): pula o passo   tres dedos direita: volta", 20, DIM,
+        draw_text(screen, "dois punhos (segure): pula o passo   tres dedos esquerda: volta", 20, DIM,
                   (px + 240, py + 440))

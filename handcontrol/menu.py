@@ -8,7 +8,7 @@ from .camview import draw_camera
 from .config import DT, HEIGHT, TILE, WIDTH
 from .physics import move_body
 from .shop import Cursor
-from .ui import DIM, GREEN, RED, WHITE, YELLOW, draw_text
+from .ui import DIM, GREEN, RED, WHITE, YELLOW, draw_fingers, draw_text
 
 ITEMS = [("play", "Jogar"), ("levels", "Fases e estrelas"), ("calibrate", "Calibrar camera"), ("quit", "Sair")]
 
@@ -71,8 +71,9 @@ class Menu:
             if selected:
                 pygame.draw.rect(screen, (50, 48, 70), (cx - 220, y - 20, 440, 40), border_radius=6)
                 pygame.draw.rect(screen, YELLOW, (cx - 220, y - 20, 440, 40), 2, border_radius=6)
-            draw_text(screen, (">  " if selected else "") + label, 40, YELLOW if selected else WHITE, (cx, y))
-        draw_text(screen, "esquerda: indicador/polegar escolhe   duas maos abertas: confirma", 22, DIM, (cx, 462))
+            draw_fingers(screen, (cx - 205, y - 17), i + 1, YELLOW if selected else DIM)
+            draw_text(screen, label, 40, YELLOW if selected else WHITE, (cx + 20, y))
+        draw_text(screen, "dedos da mao direita escolhem   dois punhos fechados: confirma", 22, DIM, (cx, 462))
         if tracker.error:
             status, color = f"camera: {tracker.error}", RED
         elif not tracker.ready:

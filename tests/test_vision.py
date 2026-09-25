@@ -18,7 +18,7 @@ def _hand(open_fingers, thumb_open):
 
 
 def test_classify():
-    assert classify(_hand([1, 1, 1, 1], True))[0] == "OPEN"
+    assert classify(_hand([1, 1, 1, 1], True))[0] == "FIVE"
     assert classify(_hand([1, 1, 1, 1], False))[0] == "OPEN"
     assert classify(_hand([1, 0, 0, 0], False))[0] == "INDEX"
     assert classify(_hand([1, 0, 0, 0], True))[0] == "INDEX", "polegar nao atrapalha o indicador"
@@ -44,20 +44,31 @@ def test_gesture_two_hands():
     seq = [("FIST", "FIST"), ("INDEX", "INDEX"), ("INDEX", "INDEX"), ("THUMB", "FIST"), ("NONE", "INDEX"),
            ("FIST", "NONE"), ("INDEX", "INDEX")]
     out = [gi.read({"L": l, "R": r}) for l, r in seq]
-    assert out == [Input(0, False), Input(1, True), Input(1, False), Input(-1, False), Input(0, True),
-                   Input(0, False), Input(1, True)]
+    one = {"select": 1}   # indicador direito tambem conta como "item 1" nos menus
+    assert out == [Input(0, False), Input(1, True, **one), Input(1, False, **one), Input(-1, False),
+                   Input(0, True, **one), Input(0, False), Input(1, True, **one)]
     assert gi.read({}) == Input(0, False), "sem tracker: nada"
 
 
 def test_hold_confirm_and_back():
     gi = GestureInput(confirm_seconds=0.5, back_seconds=0.5)
-    both = {"L": "OPEN", "R": "OPEN"}
+    both = {"L": "FIST", "R": "FIST"}
     fired = [gi.read(both, 0.1).confirm for _ in range(8)]
     assert fired == [False] * 4 + [True] + [False] * 3, "confirma uma vez ao completar 0,5 s e nao repete"
     assert gi.read({"L": "FIST", "R": "OPEN"}, 0.1).confirm is False
     assert gi.confirm.progress == 0, "soltar zera"
-    back = [gi.read({"R": "THREE"}, 0.1).back for _ in range(6)]
+    back = [gi.read({"L": "THREE"}, 0.1).back for _ in range(6)]
     assert back == [False] * 4 + [True, False]
+
+
+def test_select_by_fingers():
+    from handcontrol.shop import Cursor
+    gi = GestureInput()
+    assert [gi.read({"R": g}).select for g in ("INDEX", "TWO", "THREE", "OPEN", "FIVE", "FIST", "NONE")] == [1, 2, 3, 4, 5, 0, 0]
+    c = Cursor(4)
+    c.update(Input(select=3)); assert c.idx == 2
+    c.update(Input(select=0)); assert c.idx == 2, "sem gesto mantem"
+    c.update(Input(select=5)); assert c.idx == 3, "5 dedos num menu de 4 cai no ultimo"
     h = Hold(1.0)
     assert not h.update(True, 0.6) and 0.5 < h.progress < 0.7
     assert h.update(True, 0.5) and h.progress == 0

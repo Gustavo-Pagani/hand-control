@@ -4,23 +4,22 @@ import pygame
 from . import assets, sound
 from .config import HEIGHT, MAX_LIVES, SHOP, WIDTH
 from .run import Run
-from .ui import BLUE, DIM, GREEN, RED, WHITE, YELLOW, dim, draw_panel, draw_text
+from .ui import BLUE, DIM, GREEN, RED, WHITE, YELLOW, dim, draw_fingers, draw_panel, draw_text
 
 ITEMS = SHOP + [("go", "Continuar", 0, "proxima fase")]
 
 
 class Cursor:
-    """Cursor de menu: indicador esquerdo = próximo, polegar esquerdo = anterior (um passo por gesto)."""
+    """Cursor de menu: o número de dedos da mão direita escolhe o item direto (1..n).
+    Mão aberta com polegar (5) num menu de 4 itens cai no item 4."""
 
     def __init__(self, n):
-        self.n, self.idx, self.prev_move = n, 0, 0
+        self.n, self.idx = n, 0
 
     def update(self, inp):
-        step = inp.move if inp.move and inp.move != self.prev_move else 0
-        self.prev_move = inp.move
-        if step:
-            self.idx = (self.idx + step) % self.n
-        return step
+        if inp.select:
+            self.idx = min(inp.select, self.n) - 1
+        return self.idx
 
 
 class Shop:
@@ -70,13 +69,14 @@ class Shop:
             if selected:
                 pygame.draw.rect(screen, (50, 48, 70), row, border_radius=6)
                 pygame.draw.rect(screen, YELLOW, row, 2, border_radius=6)
+            draw_fingers(screen, (row.x + 8, y + 6), i + 1, YELLOW if selected else DIM)
             icon = icons[key]
             if icon:
-                screen.blit(icon, icon.get_rect(center=(row.x + 40, y + 22)))
+                screen.blit(icon, icon.get_rect(center=(row.x + 70, y + 22)))
             affordable = key == "go" or self.run.can_buy(key)
             color = WHITE if affordable else DIM
-            draw_text(screen, name, 34, GREEN if key == "go" else color, (row.x + 80, y + 4), align="topleft")
-            draw_text(screen, desc, 22, DIM, (row.x + 80, y + 34), align="topleft")
+            draw_text(screen, name, 34, GREEN if key == "go" else color, (row.x + 105, y + 4), align="topleft")
+            draw_text(screen, desc, 22, DIM, (row.x + 105, y + 34), align="topleft")
             if key != "go":
                 have = (key == "shield" and self.run.shield_next) or (key == "highjump" and self.run.highjump_next)
                 label = "ja tem" if have else f"{price}"
@@ -84,5 +84,5 @@ class Shop:
                           align="midright")
         if self.msg:
             draw_text(screen, self.msg, 24, YELLOW, (cx, panel.bottom - 58))
-        draw_text(screen, "esquerda escolhe   duas maos abertas: comprar   tres dedos direita: sair da loja", 20, DIM,
-                  (cx, panel.bottom - 28))
+        draw_text(screen, "dedos da direita escolhem   dois punhos: comprar   tres dedos esquerda: sair da loja", 20,
+                  DIM, (cx, panel.bottom - 28))

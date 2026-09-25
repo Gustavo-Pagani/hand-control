@@ -5,9 +5,10 @@ from .ui import BLUE, DIM, GREEN, PANEL, RED, WHITE, YELLOW, draw_text
 from .vision import CONNECTIONS
 
 # (cor, rótulo) por lado e gesto estável
-LEFT = {"INDEX": (GREEN, "frente"), "THUMB": (BLUE, "tras"), "NONE": (RED, "sem mao"), "OPEN": (YELLOW, "aberta"),
-        "THREE": (BLUE, "tres")}
-RIGHT = {"INDEX": (YELLOW, "pulo"), "NONE": (RED, "sem mao"), "OPEN": (YELLOW, "aberta"), "THREE": (BLUE, "tres")}
+LEFT = {"INDEX": (GREEN, "frente"), "THUMB": (BLUE, "tras"), "NONE": (RED, "sem mao"), "THREE": (BLUE, "tres: voltar"),
+        "FIST": (DIM, "punho")}
+RIGHT = {"INDEX": (YELLOW, "1 / pulo"), "TWO": (YELLOW, "2"), "THREE": (YELLOW, "3"), "OPEN": (YELLOW, "4"),
+         "FIVE": (YELLOW, "5"), "NONE": (RED, "sem mao"), "FIST": (DIM, "punho")}
 SIDE_NAME = {"L": "E", "R": "D"}
 
 
