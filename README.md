@@ -1,6 +1,6 @@
 # Hand Control
 
-Um platformer 2D controlado inteiramente pelas mãos, através da webcam. Sem teclado, sem controle: você anda, pula, navega nos menus e faz compras na loja com gestos.
+Um platformer 2D controlado inteiramente pelas mãos, através da webcam. Sem teclado, sem controle: você anda, pula, navega nos menus e faz compras na loja com gestos. Feito com vibe coding, em parceria com IA.
 
 ![Python](https://img.shields.io/badge/python-3.13-blue) ![pygame](https://img.shields.io/badge/pygame-2.6-green) ![MediaPipe](https://img.shields.io/badge/mediapipe-1.0-orange) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -114,6 +114,10 @@ python -m tests
 ```
 
 Cobrem física (pisão, cabeçada, coyote time, jump buffer), inimigos, escudo, blocos, checkpoint, economia, loja, estrelas, classificação dos gestos com mãos sintéticas e o debounce. Nenhum teste precisa de câmera.
+
+## Como foi feito
+
+Este projeto foi construído com **vibe coding**: a ideia, as regras do jogo, o vocabulário de gestos e as decisões de design são minhas; o código foi escrito em parceria com IA (Claude, da Anthropic), numa conversa iterativa de planejar, implementar, testar com a câmera de verdade e ajustar. A ordem foi deliberada: primeiro o jogo inteiro funcionando com teclado, com física e colisões testadas, e só depois a camada de visão computacional, para separar problemas de jogo de problemas de reconhecimento. Boa parte das mudanças de controle veio de sessões de teste com a mão na frente da webcam, descobrindo na prática o que era confortável e o que o modelo reconhecia bem.
 
 ## Licença
 
