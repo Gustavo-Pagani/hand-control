@@ -84,5 +84,5 @@ class Shop:
                           align="midright")
         if self.msg:
             draw_text(screen, self.msg, 24, YELLOW, (cx, panel.bottom - 58))
-        draw_text(screen, "dedos da direita escolhem   dois punhos: comprar   tres dedos esquerda: sair da loja", 20,
+        draw_text(screen, "dedos da direita escolhem   sinal de OK: comprar   tres dedos esquerda: sair da loja", 20,
                   DIM, (cx, panel.bottom - 28))

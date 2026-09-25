@@ -50,6 +50,6 @@ class LevelSelect:
                 draw_star(screen, (row.right - 150 + j * 44, y + 23), 15, key in got)
             if not unlocked:
                 draw_text(screen, "bloqueada", 22, DIM, (row.right - 240, y + 22), align="midright")
-        draw_text(screen, "dedos da direita escolhem (aberta+polegar = 5)   dois punhos: jogar   tres dedos esquerda: voltar",
+        draw_text(screen, "dedos da direita escolhem (aberta+polegar = 5)   sinal de OK: jogar   tres dedos esquerda: voltar",
                   20, DIM, (cx, panel.bottom - 24))
         draw_text(screen, "estrelas: completa · todas as moedas · sem morrer", 20, GREEN, (cx, panel.bottom - 48))

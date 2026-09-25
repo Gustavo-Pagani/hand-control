@@ -73,7 +73,7 @@ class Menu:
                 pygame.draw.rect(screen, YELLOW, (cx - 220, y - 20, 440, 40), 2, border_radius=6)
             draw_fingers(screen, (cx - 205, y - 17), i + 1, YELLOW if selected else DIM)
             draw_text(screen, label, 40, YELLOW if selected else WHITE, (cx + 20, y))
-        draw_text(screen, "dedos da mao direita escolhem   dois punhos fechados: confirma", 22, DIM, (cx, 462))
+        draw_text(screen, "dedos da mao direita escolhem   sinal de OK: confirma", 22, DIM, (cx, 462))
         if tracker.error:
             status, color = f"camera: {tracker.error}", RED
         elif not tracker.ready:

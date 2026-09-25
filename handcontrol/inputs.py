@@ -54,7 +54,7 @@ class GestureInput:
     """Gestos estáveis das duas mãos -> Input.
 
     Jogo: esquerda INDEX anda para frente, THUMB para trás, resto para; direita INDEX pula uma vez (borda).
-    Menus: número de dedos da direita escolhe o item (select); dois punhos segurados confirmam;
+    Menus: número de dedos da direita escolhe o item (select); sinal de OK em qualquer mão, segurado, confirma;
     THREE na esquerda segurado volta.
     """
 
@@ -70,7 +70,7 @@ class GestureInput:
         left, right = stable.get("L", "NONE"), stable.get("R", "NONE")
         jump = right == "INDEX" and self.prev_right != "INDEX"
         self.prev_right = right
-        confirm = self.confirm.update(left == "FIST" and right == "FIST", dt)
+        confirm = self.confirm.update(left == "OK" or right == "OK", dt)
         back = self.back.update(left == "THREE", dt)
         return Input(self.MOVE.get(left, 0), jump, confirm, back, self.COUNT.get(right, 0))
 

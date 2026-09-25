@@ -146,7 +146,7 @@ class App:
     def draw_holds(self, screen):
         """Barrinha de progresso enquanto um gesto de confirmar/voltar está sendo segurado."""
         g = self.gestures
-        for hold, label, color in ((g.confirm, "confirmando (dois punhos)", YELLOW),
+        for hold, label, color in ((g.confirm, "confirmando (sinal de OK)", YELLOW),
                                    (g.back, "voltando (tres dedos esquerda)", BLUE)):
             if hold.progress > 0:
                 bar = pygame.Rect(0, 0, 300, 14)
@@ -192,19 +192,19 @@ class App:
             draw_text(screen, f"tempo  {fmt_time(g.elapsed)}", 32, WHITE, (cx, cy + 50))
             screen.blit(assets.COIN[0], (cx - 90, cy + 72))
             draw_text(screen, f"{g.collected}/{g.coins_total}   saldo {run.coins}", 30, YELLOW, (cx + 20, cy + 90))
-            hint = "dois punhos: loja" if run.level_idx + 1 < len(LEVELS) else "dois punhos: continuar"
+            hint = "sinal de OK: loja" if run.level_idx + 1 < len(LEVELS) else "sinal de OK: continuar"
         elif self.scene == "game_over":
             draw_text(screen, "GAME OVER", 80, RED, (cx, cy - 80))
             draw_text(screen, f"Voce chegou ate a fase {run.level_idx + 1}", 36, WHITE, (cx, cy))
             draw_text(screen, "o progresso das fases vencidas fica salvo", 22, DIM, (cx, cy + 40))
-            hint = "dois punhos: menu"
+            hint = "sinal de OK: menu"
         else:
             draw_text(screen, "VOCE ZEROU!", 80, YELLOW, (cx, cy - 100))
             draw_text(screen, f"tempo total  {fmt_time(run.total_time)}", 34, WHITE, (cx, cy - 30))
             draw_text(screen, f"moedas coletadas  {run.coins_total}", 34, YELLOW, (cx, cy + 10))
             total = sum(len(s) for s in self.progress["stars"].values())
             draw_text(screen, f"estrelas  {total}/{3 * len(LEVELS)}", 34, BLUE, (cx, cy + 50))
-            hint = "dois punhos: menu"
+            hint = "sinal de OK: menu"
         if int(self.t * 2) % 2 == 0:
             draw_text(screen, hint, 28, DIM, (cx, cy + 140))
 

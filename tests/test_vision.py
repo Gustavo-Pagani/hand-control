@@ -3,6 +3,12 @@ from handcontrol.inputs import GestureInput, Hold, Input
 from handcontrol.vision import Debouncer, classify
 
 
+def _ok_hand():
+    lm = _hand([0, 1, 1, 1], False)
+    lm[8] = (0.55, -0.72)   # ponta do indicador encosta na ponta do polegar (0.5, -0.7)
+    return lm
+
+
 def _hand(open_fingers, thumb_open):
     """Mão sintética: pulso na origem, dedos apontando para cima; aberto = ponta longe, fechado = ponta dobrada."""
     lm = [(0.0, 0.0)] * 21
@@ -27,6 +33,8 @@ def test_classify():
     assert classify(_hand([1, 1, 0, 0], False))[0] == "TWO"
     assert classify(_hand([1, 1, 1, 0], True))[0] == "THREE", "polegar nao atrapalha o tres"
     assert classify(_hand([1, 0, 1, 1], False))[0] == "NONE", "combinacao sem sentido"
+    assert classify(_ok_hand())[0] == "OK"
+    assert classify(_hand([0, 1, 1, 1], False))[0] == "NONE", "tres dedos sem o circulo nao e OK"
 
 
 def test_debounce():
@@ -52,10 +60,11 @@ def test_gesture_two_hands():
 
 def test_hold_confirm_and_back():
     gi = GestureInput(confirm_seconds=0.5, back_seconds=0.5)
-    both = {"L": "FIST", "R": "FIST"}
+    both = {"L": "FIST", "R": "OK"}
     fired = [gi.read(both, 0.1).confirm for _ in range(8)]
     assert fired == [False] * 4 + [True] + [False] * 3, "confirma uma vez ao completar 0,5 s e nao repete"
     assert gi.read({"L": "FIST", "R": "OPEN"}, 0.1).confirm is False
+    assert gi.read({"L": "OK", "R": "NONE"}, 0.6).confirm, "OK com a esquerda tambem vale"
     assert gi.confirm.progress == 0, "soltar zera"
     back = [gi.read({"L": "THREE"}, 0.1).back for _ in range(6)]
     assert back == [False] * 4 + [True, False]

@@ -10,19 +10,12 @@ from .ui import DIM, GREEN, RED, SHADOW, WHITE, YELLOW, dim, draw_panel, draw_te
 from .vision import FINGER_NAMES, save_calibration
 
 # (lado, gesto, nome curto, instrução)
-STEPS = [("L", "FIST", "ESQUERDA: PUNHO", "mao esquerda fechada (parado)"),
-         ("L", "INDEX", "ESQUERDA: INDICADOR", "so o indicador (frente)"),
-         ("L", "THUMB", "ESQUERDA: POLEGAR", "so o polegar, joinha (tras)"),
-         ("L", "THREE", "ESQUERDA: TRES DEDOS", "indicador, medio e anelar (voltar / sair)"),
-         ("R", "FIST", "DIREITA: PUNHO", "mao direita fechada (parado)"),
-         ("R", "INDEX", "DIREITA: 1 DEDO", "so o indicador (pulo / item 1)"),
-         ("R", "TWO", "DIREITA: 2 DEDOS", "indicador e medio (item 2)"),
-         ("R", "THREE", "DIREITA: 3 DEDOS", "indicador, medio e anelar (item 3)"),
-         ("R", "OPEN", "DIREITA: 4 DEDOS", "mao aberta com o polegar dobrado (item 4)"),
-         ("R", "FIVE", "DIREITA: 5 DEDOS", "mao aberta com o polegar (item 5)"),
-         ("B", "FIST", "DOIS PUNHOS", "as duas maos fechadas (confirmar)")]
+STEPS = [("L", "INDEX", "FRENTE", "mao esquerda, so o indicador levantado"),
+         ("L", "THUMB", "TRAS", "mao esquerda, so o polegar, joinha"),
+         ("R", "INDEX", "PULO", "mao direita, so o indicador levantado"),
+         ("A", "OK", "OK", "polegar e indicador em circulo, outros dedos abertos (qualquer mao)")]
 HOLD = 1.0  # s segurando o gesto certo para o passo contar
-SIDE_NAME = {"L": "esquerda", "R": "direita", "B": "duas maos"}
+SIDE_NAME = {"L": "esquerda", "R": "direita", "A": "qualquer mao"}
 
 
 class Calibration:
@@ -42,11 +35,13 @@ class Calibration:
         self.t = 0.0
         self.skip = Hold(1.5)   # dois punhos segurados pulam o passo
 
-    def _matches(self, side, target):
+    def _hand_for(self, side, target):
+        """Lado que está fazendo o gesto pedido, ou None. 'A' aceita qualquer mão."""
         st, lm = self.tracker.stable, self.tracker.landmarks
-        if side == "B":
-            return st["L"] == target and st["R"] == target and "L" in lm and "R" in lm
-        return st[side] == target and side in lm
+        for s in (("L", "R") if side == "A" else (side,)):
+            if st[s] == target and s in lm:
+                return s
+        return None
 
     def update(self, inp):
         """Retorna 'menu' quando o usuário quer sair (confirmar na tela final, ou voltar)."""
@@ -59,13 +54,13 @@ class Calibration:
         if tr.error or not tr.ready:
             return None
         side, target, *_ = STEPS[self.step]
-        if self.skip.update(tr.stable["L"] == "FIST" and tr.stable["R"] == "FIST" and side != "B" and target != "FIST", DT):
+        hand = self._hand_for(side, target)
+        if self.skip.update(tr.stable["L"] == "FIST" and tr.stable["R"] == "FIST", DT):
             self.results[(side, target)] = False
             self._advance()
-        elif self._matches(side, target):
+        elif hand:
             self.hold += DT
-            if side != "B":
-                self.samples[target].append(tr.metrics[side])
+            self.samples[target].append(tr.metrics[hand])
             if self.hold >= HOLD:
                 self.results[(side, target)] = True
                 self._advance()
@@ -89,19 +84,16 @@ class Calibration:
         thresh = dict(self.tracker.thresh)
         msgs = []
         s = self.samples
-        opened = s["INDEX"] + s["OPEN"] + s["FIVE"]
-        if opened and s["FIST"]:
-            index_open = statistics.median(m[1] for m in opened)           # indicador levantado
-            fist_high = statistics.median(max(m[1:]) for m in s["FIST"])   # dedo mais aberto no punho
-            if index_open > fist_high:
-                thresh["fingers"] = round((index_open + fist_high) / 2, 3)
+        if s["INDEX"]:
+            index_open = statistics.median(m[1] for m in s["INDEX"])           # indicador levantado
+            rest_closed = statistics.median(max(m[2:]) for m in s["INDEX"])    # medio/anelar/minimo dobrados
+            if index_open > rest_closed:
+                thresh["fingers"] = round((index_open + rest_closed) / 2, 3)
             else:
-                msgs.append("dedos: indicador e punho parecidos demais, limiar mantido")
-        closed = s["FIST"] + s["INDEX"] + s["OPEN"]
-        thumbs = s["THUMB"] + s["FIVE"]
-        if thumbs and closed:
-            thumb_open = statistics.median(m[0] for m in thumbs)
-            thumb_closed = statistics.median(m[0] for m in closed)
+                msgs.append("dedos: indicador e os outros parecidos demais, limiar mantido")
+        if s["THUMB"] and s["INDEX"]:
+            thumb_open = statistics.median(m[0] for m in s["THUMB"])
+            thumb_closed = statistics.median(m[0] for m in s["INDEX"])
             if thumb_open > thumb_closed:
                 thresh["thumb"] = round((thumb_open + thumb_closed) / 2, 3)
             else:
@@ -126,7 +118,7 @@ class Calibration:
                 mark, color = ">", YELLOW
             else:
                 mark, color = "-", DIM
-            draw_text(screen, f"{mark} {i + 1}. {name}", 20, color, (px + 24, py + 10 + i * 20), align="topleft")
+            draw_text(screen, f"{mark}  {i + 1}. {name}", 30, color, (px + 24, py + 20 + i * 40), align="topleft")
         if self.done:
             ok, n = sum(self.results.values()), len(STEPS)
             draw_text(screen, "Calibrado!" if ok == n else "Concluido", 44, GREEN if ok == n else YELLOW,
@@ -137,9 +129,10 @@ class Calibration:
                       (px + 240, py + 290))
             if self.msg:
                 draw_text(screen, self.msg, 18, YELLOW, (px + 240, py + 320))
-            draw_text(screen, "dois punhos: voltar ao menu", 26, DIM, (px + 240, py + 430))
+            draw_text(screen, "sinal de OK: voltar ao menu", 26, DIM, (px + 240, py + 430))
             return
-        side, _, name, hint = STEPS[self.step]
+        side, target, name, hint = STEPS[self.step]
+        hand = self._hand_for(side, target)
         draw_text(screen, f"Mostre: {name}", 36, YELLOW, (px + 240, py + 240))
         draw_text(screen, hint, 22, WHITE, (px + 240, py + 272))
         bar = pygame.Rect(px + 60, py + 294, 360, 22)
@@ -147,7 +140,7 @@ class Calibration:
         pygame.draw.rect(screen, GREEN, (bar.x, bar.y, int(bar.w * min(self.hold / HOLD, 1)), bar.h))
         pygame.draw.rect(screen, DIM, bar, 2)
         draw_text(screen, f"segure o gesto: {SIDE_NAME[side]}", 20, DIM, (px + 240, py + 330))
-        fside = "R" if side == "B" else side
+        fside = hand or ("R" if side == "A" else side)
         for i, (fname, ext, m) in enumerate(zip(FINGER_NAMES, tr.fingers[fside], tr.metrics[fside])):
             cx = px + 60 + i * 90
             pygame.draw.circle(screen, GREEN if ext else (70, 70, 85), (cx, py + 372), 14)
