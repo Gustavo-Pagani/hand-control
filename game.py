@@ -4,32 +4,24 @@ from dataclasses import dataclass, field
 
 import pygame
 
-TILE = 32
-WIDTH, HEIGHT = 960, 544  # 30 x 17 tiles
-SPEED = 300         # px/s
-GRAVITY = 1800      # px/s²
-JUMP_SPEED = 650    # px/s  -> altura ≈ 117 px ≈ 3,6 tiles; alcance ≈ 216 px ≈ 6,7 tiles
-MAX_FALL = 900      # px/s
-COYOTE_TIME = 0.10  # s: ainda pode pular depois de sair da beirada
-JUMP_BUFFER = 0.12  # s: pulo comandado antes de tocar o chão executa ao tocar
-ENEMY_SPEED = 80
+import assets
+
+TILE = 36                    # 18 px do Kenney x 2
+WIDTH, HEIGHT = 1080, 612    # 30 x 17 tiles
+# física em px/s escalada por 36/32 para manter altura de pulo (3,6 tiles) e alcance (6,7 tiles)
+SPEED = 338
+GRAVITY = 2025
+JUMP_SPEED = 731
+MAX_FALL = 1012
+COYOTE_TIME = 0.10   # s: ainda pode pular depois de sair da beirada
+JUMP_BUFFER = 0.12   # s: pulo comandado antes de tocar o chão executa ao tocar
+ENEMY_SPEED = 90
 HOP_INTERVAL = 1.4
-HOP_SPEED = 450
+HOP_SPEED = 506
 STOMP_BOUNCE = 0.6
 DEATH_TIME = 1.0
-SIZE = 32
-ENEMY_SIZE = 28
-
-GREEN = (60, 170, 80)
-GREEN_DARK = (40, 120, 60)
-BLUE = (60, 120, 230)
-RED = (220, 60, 60)
-ORANGE = (240, 150, 40)
-YELLOW = (250, 210, 60)
-GRAY = (140, 140, 150)
-SPIKE = (225, 225, 235)
-POLE = (200, 200, 210)
-
+PLAYER_W, PLAYER_H = 36, 44
+ENEMY_SIZE = {"walker": (36, 28), "hopper": (36, 36)}
 VALID = "#P.EH^oG"
 
 
@@ -42,6 +34,8 @@ class Input:
 @dataclass
 class LevelData:
     solids: list = field(default_factory=list)
+    tiles: list = field(default_factory=list)     # (surf, x, y) para desenhar
+    deco: list = field(default_factory=list)      # (surf, x, y) atrás dos tiles
     enemies: list = field(default_factory=list)   # (x, y, kind)
     spikes: list = field(default_factory=list)
     coins: list = field(default_factory=list)
@@ -51,11 +45,12 @@ class LevelData:
     h: int = 0
 
 
-def load_level(rows: list[str]) -> LevelData:
+def load_level(rows: list[str], theme: str = "grass") -> LevelData:
     assert len(rows) * TILE == HEIGHT, f"mapa precisa de {HEIGHT // TILE} linhas, tem {len(rows)}"
     assert len({len(r) for r in rows}) == 1, "todas as linhas do mapa precisam ter o mesmo comprimento"
     assert len(rows[0]) * TILE >= WIDTH, "fase mais estreita que a janela"
     lv = LevelData(w=len(rows[0]) * TILE, h=len(rows) * TILE)
+    terrain = assets.TERRAIN.get(theme)  # None nos testes sem assets carregados
     spawns, goals = [], []
     for r, line in enumerate(rows):
         for c, ch in enumerate(line):
@@ -69,9 +64,15 @@ def load_level(rows: list[str]) -> LevelData:
             elif ch == "^":
                 lv.spikes.append(pygame.Rect(x, y + TILE - 12, TILE, 12))
             elif ch == "o":
-                lv.coins.append(pygame.Rect(x + 8, y + 8, 16, 16))
+                lv.coins.append(pygame.Rect(x + 10, y + 10, 16, 16))
             elif ch == "G":
                 goals.append(pygame.Rect(x, y, TILE, TILE))
+            elif ch == "#" and terrain:
+                top = r == 0 or rows[r - 1][c] != "#"
+                lv.tiles.append((assets.pick(terrain["top" if top else "fill"], (r, c)), x, y))
+                every = assets.THEMES[theme][6]
+                if top and r > 0 and rows[r - 1][c] == "." and assets.pick(range(every), (c, r)) == 0:
+                    lv.deco.append((assets.pick(terrain["deco"], (r, c, 1)), x, y - TILE))
         # funde '#' vizinhos numa linha: 1 Rect por sequência, não por tile
         for m in re.finditer("#+", line):
             lv.solids.append(pygame.Rect(m.start() * TILE, r * TILE, len(m[0]) * TILE, TILE))
@@ -118,16 +119,19 @@ def move_body(body, dt: float, solids: list[pygame.Rect]):
 
 class Player:
     def __init__(self, x, y):
-        self.x, self.y = float(x), float(y)
-        self.rect = pygame.Rect(x, y, SIZE, SIZE)
+        self.rect = pygame.Rect(x, y + TILE - PLAYER_H, PLAYER_W, PLAYER_H)
+        self.x, self.y = float(self.rect.x), float(self.rect.y)
         self.vx = self.vy = 0.0
         self.on_ground = self.hit_wall = False
         self.prev_bottom = self.rect.bottom
         self.coyote = self.jump_buf = 0.0
+        self.facing = 1
 
     def update(self, inp: Input, dt: float, solids: list[pygame.Rect]):
         self.prev_bottom = self.rect.bottom
         self.vx = inp.move * SPEED
+        if inp.move:
+            self.facing = inp.move
         self.coyote = COYOTE_TIME if self.on_ground else self.coyote - dt
         self.jump_buf = JUMP_BUFFER if inp.jump else self.jump_buf - dt
         if self.jump_buf > 0 and self.coyote > 0:
@@ -139,8 +143,9 @@ class Player:
 class Enemy:
     def __init__(self, x, y, kind):
         self.kind = kind
-        self.x, self.y = float(x + (SIZE - ENEMY_SIZE) // 2), float(y + SIZE - ENEMY_SIZE)
-        self.rect = pygame.Rect(self.x, self.y, ENEMY_SIZE, ENEMY_SIZE)
+        w, h = ENEMY_SIZE[kind]
+        self.rect = pygame.Rect(x + (TILE - w) // 2, y + TILE - h, w, h)
+        self.x, self.y = float(self.rect.x), float(self.rect.y)
         self.vx, self.vy = -ENEMY_SPEED, 0.0
         self.on_ground = self.hit_wall = False
         self.timer = HOP_INTERVAL
@@ -164,15 +169,16 @@ class Enemy:
 class Game:
     """Uma tentativa em uma fase. state: playing -> dead -> dead_done, ou playing -> won."""
 
-    def __init__(self, rows: list[str], bg=(30, 30, 40)):
-        self.level = load_level(rows)
-        self.bg = bg
+    def __init__(self, rows: list[str], theme: str = "grass"):
+        self.level = load_level(rows, theme)
+        self.theme = theme
         self.player = Player(*self.level.spawn)
         self.enemies = [Enemy(*e) for e in self.level.enemies]
         self.coins = list(self.level.coins)
         self.coins_total = len(self.coins)
         self.collected = 0
         self.elapsed = 0.0
+        self.t = 0.0
         self.state = "playing"
         self.timer = 0.0
         self.camera_x = 0
@@ -180,10 +186,11 @@ class Game:
     def die(self):
         self.state = "dead"
         self.timer = DEATH_TIME
-        self.player.vy = -400.0
+        self.player.vy = -450.0
 
     def update(self, inp: Input, dt: float):
         p, lv = self.player, self.level
+        self.t += dt
         if self.state == "dead":
             p.vy += GRAVITY * dt
             p.y += p.vy * dt
@@ -197,7 +204,7 @@ class Game:
 
         self.elapsed += dt
         p.update(inp, dt, lv.solids)
-        p.x = pygame.math.clamp(p.x, 0, lv.w - SIZE)
+        p.x = pygame.math.clamp(p.x, 0, lv.w - PLAYER_W)
         p.rect.x = round(p.x)
         for e in self.enemies:
             e.update(dt, lv.solids)
@@ -223,28 +230,51 @@ class Game:
             self.state = "won"
         self.camera_x = pygame.math.clamp(p.rect.centerx - WIDTH // 2, 0, lv.w - WIDTH)
 
+    def draw_background(self, surface, cx):
+        bg = assets.BG[self.theme]
+        surface.fill(bg["sky"])
+        for factor, y, hills, fill in ((0.2, HEIGHT - 300, bg["far"], bg["far_fill"]),
+                                        (0.5, HEIGHT - 190, bg["hills"], bg["fill"])):
+            off = int(cx * factor) % 48
+            for x in range(-off, WIDTH, 48):
+                surface.blit(hills, (x, y))
+                for yy in range(y + 48, HEIGHT, 48):
+                    surface.blit(fill, (x, yy))
+
     def draw(self, surface):
-        surface.fill(self.bg)
-        cx, lv = self.camera_x, self.level
-        visible = pygame.Rect(cx, 0, WIDTH, HEIGHT)
-        for s in lv.solids:
-            if s.colliderect(visible):
-                r = s.move(-cx, 0)
-                pygame.draw.rect(surface, GREEN, r)
-                pygame.draw.rect(surface, GREEN_DARK, r, 2)
+        cx, lv, t = self.camera_x, self.level, self.t
+        self.draw_background(surface, cx)
+        visible = pygame.Rect(cx - TILE, 0, WIDTH + 2 * TILE, HEIGHT)
+        for surf, x, y in lv.deco + lv.tiles:
+            if visible.left <= x <= visible.right:
+                surface.blit(surf, (x - cx, y))
         for s in lv.spikes:
             if s.colliderect(visible):
-                x, base = s.x - cx, s.bottom
-                for i in range(3):
-                    x0 = x + i * 11
-                    pygame.draw.polygon(surface, SPIKE, [(x0, base), (x0 + 5, base - 12), (x0 + 10, base)])
+                surface.blit(assets.SPIKE, (s.x - cx, s.bottom - TILE))
+        coin = assets.frame(assets.COIN, t, 4)
         for c in self.coins:
             if c.colliderect(visible):
-                pygame.draw.circle(surface, YELLOW, c.move(-cx, 0).center, 8)
-        g = lv.goal.move(-cx, 0)
-        pygame.draw.rect(surface, POLE, (g.x + 4, g.y, 4, g.h))
-        pygame.draw.polygon(surface, YELLOW, [(g.x + 8, g.y), (g.x + 30, g.y + 10), (g.x + 8, g.y + 20)])
+                surface.blit(coin, (c.centerx - TILE // 2 - cx, c.centery - TILE // 2))
+        g = lv.goal
+        for y in range(g.top + TILE, g.bottom, TILE):
+            surface.blit(assets.POLE, (g.x - cx, y))
+        surface.blit(assets.frame(assets.FLAG, t, 3), (g.x - cx, g.top))
         for e in self.enemies:
             if e.rect.colliderect(visible):
-                pygame.draw.rect(surface, RED if e.kind == "walker" else ORANGE, e.rect.move(-cx, 0))
-        pygame.draw.rect(surface, GRAY if self.state != "playing" else BLUE, self.player.rect.move(-cx, 0))
+                frames = assets.ENEMY[e.kind]
+                img = frames[1] if e.kind == "hopper" and not e.on_ground else assets.frame(frames, t, 3)
+                if e.vx > 0:
+                    img = assets.flip(img)
+                surface.blit(img, img.get_rect(midbottom=(e.rect.centerx - cx, e.rect.bottom)))
+        p = self.player
+        if self.state != "playing":
+            img = pygame.transform.flip(assets.PLAYER["idle"][0], p.facing < 0, True)
+        elif not p.on_ground:
+            img = assets.PLAYER["jump"][0]
+        elif p.vx:
+            img = assets.frame(assets.PLAYER["walk"], t, 8)
+        else:
+            img = assets.PLAYER["idle"][0]
+        if p.facing < 0 and self.state == "playing":
+            img = assets.flip(img)
+        surface.blit(img, img.get_rect(midbottom=(p.rect.centerx - cx, p.rect.bottom + 2)))

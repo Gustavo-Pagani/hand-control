@@ -133,13 +133,26 @@ def test_death_flow():
     assert g.state == "dead_done", "morte deve terminar em dead_done após DEATH_TIME"
 
 
+def test_assets_load():
+    import os
+    import assets
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    pygame.display.set_mode((1, 1))
+    assets.load()
+    assert set(assets.TERRAIN) == set(assets.BG) == {theme for _, theme, _ in LEVELS}
+    assert assets.COIN and assets.FLAG and assets.SPIKE and assets.POLE and assets.HEART["full"]
+    assert assets.PLAYER["walk"] and assets.ENEMY["walker"] and assets.ENEMY["hopper"]
+    lv = load_level(LEVELS[0][2], LEVELS[0][1])
+    assert lv.tiles, "tiles de desenho devem ser gerados com assets carregados"
+
+
 def test_levels_static():
-    for name, bg, rows in LEVELS:
+    for name, theme, rows in LEVELS:
         assert len(rows) == 17, name
         assert len({len(r) for r in rows}) == 1 and len(rows[0]) >= 30, name
         assert sum(r.count("P") for r in rows) == 1, name
         assert any("G" in r for r in rows), name
-        assert len(bg) == 3, name
+        assert isinstance(theme, str), name
         load_level(rows)  # valida caracteres
         gap = 0
         for ch in rows[16]:

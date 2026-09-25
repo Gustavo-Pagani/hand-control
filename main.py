@@ -3,24 +3,27 @@ import sys
 
 import pygame
 
-from game import BLUE, GREEN, HEIGHT, RED, ORANGE, YELLOW, WIDTH, Game, Input, move_body
+import assets
+from game import HEIGHT, TILE, WIDTH, Game, Input, move_body
 from levels import LEVELS
 
 FPS = 60
 DT = 1 / FPS  # passo fixo; nunca usar o retorno de clock.tick() (thread da webcam vai disputar CPU)
 LIVES = 3
-WHITE = (240, 240, 245)
-DIM = (180, 180, 190)
-PANEL = (20, 20, 30)
-MENU_BG = (25, 30, 50)
+WHITE = (250, 250, 250)
+DIM = (200, 200, 210)
+YELLOW = (255, 215, 80)
+RED = (235, 80, 80)
+PANEL = (28, 26, 40)
+SHADOW = (30, 30, 45)
 
-_fonts = {}
 
-
-def draw_text(surface, txt, size, color, center):
-    if size not in _fonts:
-        _fonts[size] = pygame.font.SysFont(None, size)
-    img = _fonts[size].render(txt, True, color)
+def draw_text(surface, txt, size, color, center, shadow=True):
+    f = assets.font(size)
+    if shadow:
+        img = f.render(txt, False, SHADOW)
+        surface.blit(img, img.get_rect(center=(center[0] + 3, center[1] + 3)))
+    img = f.render(txt, False, color)
     surface.blit(img, img.get_rect(center=center))
 
 
@@ -36,14 +39,14 @@ def read_keyboard(events) -> Input:
 
 
 class Bouncer:
-    """Quadradinho decorativo do menu; reaproveita move_body com um chão fake."""
+    """Personagem decorativo do menu; reaproveita move_body com um chão fake."""
 
-    def __init__(self):
-        self.x, self.y = float(random.randint(40, WIDTH - 80)), float(random.randint(100, 300))
-        self.rect = pygame.Rect(self.x, self.y, 24, 24)
+    def __init__(self, frames):
+        self.frames = frames
+        self.rect = pygame.Rect(random.randint(40, WIDTH - 80), random.randint(100, 300), 36, 36)
+        self.x, self.y = float(self.rect.x), float(self.rect.y)
         self.vx, self.vy = random.choice([-120, 120]), 0.0
         self.on_ground = self.hit_wall = False
-        self.color = random.choice([BLUE, RED, ORANGE, YELLOW, GREEN])
 
 
 class App:
@@ -54,8 +57,10 @@ class App:
         self.game = None
         self.total_time = self.total_coins = self.total_coins_max = 0
         self.t = 0.0
-        self.bouncers = [Bouncer() for _ in range(6)]
-        self.menu_floor = [pygame.Rect(0, HEIGHT - 60, WIDTH, 60),
+        self.menu_game = Game(LEVELS[0][2], LEVELS[0][1])  # só para o fundo e o chão do menu
+        self.bouncers = [Bouncer(assets.PLAYER["walk"])] + [
+            Bouncer(assets.ENEMY[k]) for k in ("walker", "hopper", "walker", "hopper")]
+        self.menu_floor = [pygame.Rect(0, HEIGHT - TILE, WIDTH, TILE),
                            pygame.Rect(-10, 0, 10, HEIGHT), pygame.Rect(WIDTH, 0, 10, HEIGHT)]
         if start_level is not None:
             self.start(start_level)
@@ -66,8 +71,8 @@ class App:
         self.new_attempt()
 
     def new_attempt(self):
-        name, bg, rows = LEVELS[self.level_idx]
-        self.game = Game(rows, bg)
+        name, theme, rows = LEVELS[self.level_idx]
+        self.game = Game(rows, theme)
         self.scene = "play"
 
     def update(self, inp, events):
@@ -79,7 +84,7 @@ class App:
                 if b.hit_wall:
                     b.vx = -b.vx
                 if b.on_ground:
-                    b.vy = -random.randint(300, 600)
+                    b.vy = -random.randint(350, 700)
             if inp.jump:
                 self.start(0)
             for k in keys:
@@ -117,59 +122,67 @@ class App:
         cx, cy = WIDTH // 2, HEIGHT // 2
         blink = int(self.t * 2) % 2 == 0
         if self.scene == "menu":
-            screen.fill(MENU_BG)
-            pygame.draw.rect(screen, GREEN, self.menu_floor[0])
+            self.menu_game.draw_background(screen, self.t * 40)
+            top = assets.TERRAIN["grass"]["top"]
+            for i, x in enumerate(range(0, WIDTH, TILE)):
+                screen.blit(assets.pick(top, i), (x, HEIGHT - TILE))
             for b in self.bouncers:
-                pygame.draw.rect(screen, b.color, b.rect)
-            draw_text(screen, "HAND CONTROL", 96, PANEL, (cx + 4, 154))
-            draw_text(screen, "HAND CONTROL", 96, WHITE, (cx, 150))
-            draw_text(screen, "um platformer de formas", 32, DIM, (cx, 205))
+                img = assets.frame(b.frames, self.t, 4)
+                if b.vx > 0:
+                    img = assets.flip(img)
+                screen.blit(img, img.get_rect(midbottom=b.rect.midbottom))
+            draw_text(screen, "HAND CONTROL", 120, WHITE, (cx, 150))
+            draw_text(screen, "um platformer de formas... com formas melhores", 36, DIM, (cx, 215))
             if blink:
-                draw_text(screen, "ESPAÇO para jogar", 40, YELLOW, (cx, 300))
-            draw_text(screen, "1-5 escolhe a fase   ·   A/D anda   ·   ESPAÇO pula   ·   ESC sai", 24, DIM, (cx, 350))
+                draw_text(screen, "ESPACO para jogar", 52, YELLOW, (cx, 320))
+            draw_text(screen, "1-5 escolhe a fase   A/D anda   ESPACO pula   ESC sai", 30, DIM, (cx, 380))
             return
 
         self.game.draw(screen)
         name = LEVELS[self.level_idx][0]
         g = self.game
         if self.scene == "play":
-            draw_text(screen, f"Fase {self.level_idx + 1} · {name}", 28, WHITE, (140, 20))
-            for i in range(self.lives):
-                pygame.draw.rect(screen, BLUE, (WIDTH - 40 - i * 28, 10, 20, 20))
-            draw_text(screen, f"moedas {g.collected}/{g.coins_total}", 28, YELLOW, (cx, 20))
-            draw_text(screen, fmt_time(g.elapsed), 28, WHITE, (WIDTH - 200, 20))
+            draw_text(screen, f"Fase {self.level_idx + 1}  {name}", 34, WHITE, (170, 24))
+            for i in range(LIVES):
+                screen.blit(assets.HEART["full" if i < self.lives else "empty"], (WIDTH - 50 - i * 40, 8))
+            screen.blit(assets.COIN[0], (cx - 70, 6))
+            draw_text(screen, f"{g.collected}/{g.coins_total}", 34, YELLOW, (cx + 10, 24))
+            draw_text(screen, fmt_time(g.elapsed), 34, WHITE, (WIDTH - 260, 24))
             return
 
         dim = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 170))
+        dim.fill((0, 0, 0, 160))
         screen.blit(dim, (0, 0))
-        panel = pygame.Rect(0, 0, 560, 300)
+        panel = pygame.Rect(0, 0, 600, 320)
         panel.center = (cx, cy)
-        pygame.draw.rect(screen, PANEL, panel, border_radius=12)
-        pygame.draw.rect(screen, YELLOW, panel, 3, border_radius=12)
+        pygame.draw.rect(screen, PANEL, panel, border_radius=8)
+        pygame.draw.rect(screen, YELLOW, panel, 4, border_radius=8)
         if self.scene == "level_done":
-            draw_text(screen, f"Fase {self.level_idx + 1} completa!", 56, YELLOW, (cx, cy - 90))
-            draw_text(screen, name, 36, WHITE, (cx, cy - 40))
-            draw_text(screen, f"tempo  {fmt_time(g.elapsed)}", 32, WHITE, (cx, cy + 10))
-            draw_text(screen, f"moedas  {g.collected}/{g.coins_total}", 32, YELLOW, (cx, cy + 45))
-            hint = "ESPAÇO para continuar"
+            draw_text(screen, f"Fase {self.level_idx + 1} completa!", 64, YELLOW, (cx, cy - 100))
+            draw_text(screen, name, 40, WHITE, (cx, cy - 50))
+            draw_text(screen, f"tempo  {fmt_time(g.elapsed)}", 38, WHITE, (cx, cy + 5))
+            screen.blit(assets.COIN[0], (cx - 80, cy + 27))
+            draw_text(screen, f"{g.collected}/{g.coins_total}", 38, YELLOW, (cx + 10, cy + 45))
+            hint = "ESPACO para continuar"
         elif self.scene == "game_over":
-            draw_text(screen, "GAME OVER", 64, RED, (cx, cy - 70))
-            draw_text(screen, f"Você chegou até a fase {self.level_idx + 1}", 32, WHITE, (cx, cy))
-            hint = "ESPAÇO para o menu"
+            draw_text(screen, "GAME OVER", 80, RED, (cx, cy - 80))
+            draw_text(screen, f"Voce chegou ate a fase {self.level_idx + 1}", 38, WHITE, (cx, cy))
+            hint = "ESPACO para o menu"
         else:
-            draw_text(screen, "VOCÊ ZEROU!", 64, YELLOW, (cx, cy - 80))
-            draw_text(screen, f"tempo total  {fmt_time(self.total_time)}", 32, WHITE, (cx, cy - 10))
-            draw_text(screen, f"moedas  {self.total_coins}/{self.total_coins_max}", 32, YELLOW, (cx, cy + 30))
-            hint = "ESPAÇO para o menu"
+            draw_text(screen, "VOCE ZEROU!", 80, YELLOW, (cx, cy - 90))
+            draw_text(screen, f"tempo total  {fmt_time(self.total_time)}", 38, WHITE, (cx, cy - 15))
+            screen.blit(assets.COIN[0], (cx - 80, cy + 7))
+            draw_text(screen, f"{self.total_coins}/{self.total_coins_max}", 38, YELLOW, (cx + 10, cy + 25))
+            hint = "ESPACO para o menu"
         if blink:
-            draw_text(screen, hint, 28, DIM, (cx, cy + 110))
+            draw_text(screen, hint, 32, DIM, (cx, cy + 120))
 
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Hand Control")
+    assets.load()
     clock = pygame.time.Clock()
     start = int(sys.argv[1]) - 1 if len(sys.argv) > 1 else None
     app = App(start)

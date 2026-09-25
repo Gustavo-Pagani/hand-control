@@ -1,0 +1,8 @@
+Assets de Kenney (https://kenney.nl), licença CC0 1.0 (domínio público).
+
+tiles.png        - Pixel Platformer (tilemap_packed.png)
+characters.png   - Pixel Platformer (tilemap-characters_packed.png)
+backgrounds.png  - Pixel Platformer (tilemap-backgrounds_packed.png)
+industrial.png   - Pixel Platformer Industrial Expansion (tilemap_packed.png)
+font.ttf         - Kenney Fonts (Kenney Pixel.ttf)
+font_ui.ttf      - Kenney Fonts (Kenney Future Narrow.ttf)
