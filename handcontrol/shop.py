@@ -10,19 +10,13 @@ ITEMS = SHOP + [("go", "Continuar", 0, "proxima fase")]
 
 
 class Cursor:
-    """Cursor de menu com teclado (setas/A/D) e gestos (indicador esquerdo = próximo, borda de subida)."""
+    """Cursor de menu: indicador esquerdo = próximo, polegar esquerdo = anterior (um passo por gesto)."""
 
     def __init__(self, n):
         self.n, self.idx, self.prev_move = n, 0, 0
 
-    def update(self, keys, inp):
-        step = 0
-        if pygame.K_RIGHT in keys or pygame.K_d in keys or pygame.K_DOWN in keys or pygame.K_s in keys:
-            step = 1
-        elif pygame.K_LEFT in keys or pygame.K_a in keys or pygame.K_UP in keys or pygame.K_w in keys:
-            step = -1
-        elif inp.move and inp.move != self.prev_move:
-            step = inp.move
+    def update(self, inp):
+        step = inp.move if inp.move and inp.move != self.prev_move else 0
         self.prev_move = inp.move
         if step:
             self.idx = (self.idx + step) % self.n
@@ -37,11 +31,13 @@ class Shop:
         self.msg = ""
         self.t = 0.0
 
-    def update(self, keys, inp):
-        """-> 'next' quando o jogador escolhe continuar."""
+    def update(self, inp):
+        """-> 'next' quando o jogador escolhe continuar (item Continuar ou tres dedos na direita)."""
         self.t += 1 / 60
-        self.cursor.update(keys, inp)
-        if inp.jump:
+        self.cursor.update(inp)
+        if inp.back:
+            return "next"
+        if inp.confirm:
             key = ITEMS[self.cursor.idx][0]
             if key == "go":
                 return "next"
@@ -88,5 +84,5 @@ class Shop:
                           align="midright")
         if self.msg:
             draw_text(screen, self.msg, 24, YELLOW, (cx, panel.bottom - 58))
-        draw_text(screen, "A/D ou indicador esquerdo: escolher   ESPACO ou indicador direito: comprar", 20, DIM,
+        draw_text(screen, "esquerda escolhe   duas maos abertas: comprar   tres dedos direita: sair da loja", 20, DIM,
                   (cx, panel.bottom - 28))

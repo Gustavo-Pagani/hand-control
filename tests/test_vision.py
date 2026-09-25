@@ -1,5 +1,5 @@
 """Checagem da visão sem abrir câmera: python -m tests.test_vision"""
-from handcontrol.inputs import GestureInput, Input
+from handcontrol.inputs import GestureInput, Hold, Input
 from handcontrol.vision import Debouncer, classify
 
 
@@ -24,7 +24,9 @@ def test_classify():
     assert classify(_hand([1, 0, 0, 0], True))[0] == "INDEX", "polegar nao atrapalha o indicador"
     assert classify(_hand([0, 0, 0, 0], True))[0] == "THUMB"
     assert classify(_hand([0, 0, 0, 0], False))[0] == "FIST"
-    assert classify(_hand([1, 1, 0, 0], False))[0] == "NONE", "dois dedos nao e gesto"
+    assert classify(_hand([1, 1, 0, 0], False))[0] == "TWO"
+    assert classify(_hand([1, 1, 1, 0], True))[0] == "THREE", "polegar nao atrapalha o tres"
+    assert classify(_hand([1, 0, 1, 1], False))[0] == "NONE", "combinacao sem sentido"
 
 
 def test_debounce():
@@ -45,6 +47,20 @@ def test_gesture_two_hands():
     assert out == [Input(0, False), Input(1, True), Input(1, False), Input(-1, False), Input(0, True),
                    Input(0, False), Input(1, True)]
     assert gi.read({}) == Input(0, False), "sem tracker: nada"
+
+
+def test_hold_confirm_and_back():
+    gi = GestureInput(confirm_seconds=0.5, back_seconds=0.5)
+    both = {"L": "OPEN", "R": "OPEN"}
+    fired = [gi.read(both, 0.1).confirm for _ in range(8)]
+    assert fired == [False] * 4 + [True] + [False] * 3, "confirma uma vez ao completar 0,5 s e nao repete"
+    assert gi.read({"L": "FIST", "R": "OPEN"}, 0.1).confirm is False
+    assert gi.confirm.progress == 0, "soltar zera"
+    back = [gi.read({"R": "THREE"}, 0.1).back for _ in range(6)]
+    assert back == [False] * 4 + [True, False]
+    h = Hold(1.0)
+    assert not h.update(True, 0.6) and 0.5 < h.progress < 0.7
+    assert h.update(True, 0.5) and h.progress == 0
 
 
 if __name__ == "__main__":

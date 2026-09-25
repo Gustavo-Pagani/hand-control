@@ -14,10 +14,12 @@ class LevelSelect:
         self.bg_game = background_game
         self.cursor = Cursor(len(LEVELS))
 
-    def update(self, keys, inp):
-        """-> índice da fase escolhida, ou None."""
-        self.cursor.update(keys, inp)
-        if inp.jump:
+    def update(self, inp):
+        """-> índice da fase escolhida, 'menu' para voltar, ou None."""
+        self.cursor.update(inp)
+        if inp.back:
+            return "menu"
+        if inp.confirm:
             if self.cursor.idx < self.progress["unlocked"]:
                 return self.cursor.idx
             sound.play("hurt")
@@ -47,6 +49,6 @@ class LevelSelect:
                 draw_star(screen, (row.right - 150 + j * 44, y + 23), 15, key in got)
             if not unlocked:
                 draw_text(screen, "bloqueada", 22, DIM, (row.right - 240, y + 22), align="midright")
-        draw_text(screen, "A/D ou indicador esquerdo: escolher   ESPACO ou indicador direito: jogar   ESC volta",
+        draw_text(screen, "esquerda escolhe   duas maos abertas: jogar   tres dedos direita: voltar",
                   20, DIM, (cx, panel.bottom - 24))
         draw_text(screen, "estrelas: completa · todas as moedas · sem morrer", 20, GREEN, (cx, panel.bottom - 48))

@@ -1,4 +1,8 @@
-"""Cenas (menu, fases, calibrar, jogar, fim de fase, loja, game over, vitória), HUD e o loop principal."""
+"""Cenas (menu, fases, calibrar, jogar, fim de fase, loja, game over, vitória), HUD e o loop principal.
+
+Tudo é controlado por gesto. O teclado continua funcionando em silêncio (A/D, espaço, ENTER, BACKSPACE, ESC)
+só para testes; nenhuma tela anuncia teclas.
+"""
 import sys
 
 import pygame
@@ -26,6 +30,7 @@ class App:
         self.stars = set()
         self.t = 0.0
         self.show_cam = True
+        self.quit = False
         self.progress = load_progress()
         self.tracker = tracker or HandTracker()
         if not self.tracker.is_alive() and not self.tracker.error:
@@ -56,7 +61,7 @@ class App:
     def read_input(self, events) -> Input:
         tr = self.tracker
         stable = tr.stable if tr.ready and not tr.error else {}
-        return merge(read_keyboard(events), self.gestures.read(stable))
+        return merge(read_keyboard(events), self.gestures.read(stable, DT))
 
     def update(self, inp, events):
         self.t += DT
@@ -67,43 +72,44 @@ class App:
         if pygame.K_m in keys:
             sound.toggle_mute()
         if self.scene == "menu":
-            self.menu.update()
-            if pygame.K_c in keys:
+            action = self.menu.update(inp)
+            if action == "play":
+                self.start(0)
+            elif action == "levels":
+                self.scene = "levels"
+            elif action == "calibrate":
                 self.calibration.reset()
                 self.scene = "calibrate"
-            elif pygame.K_RETURN in keys:
-                self.scene = "levels"
-            elif inp.jump:
-                self.start(0)
-            for k in keys:
-                if pygame.K_1 <= k <= pygame.K_5 and k - pygame.K_1 < self.progress["unlocked"]:
-                    self.start(k - pygame.K_1)
+            elif action == "quit":
+                self.quit = True
         elif self.scene == "levels":
-            idx = self.levelselect.update(keys, inp)
-            if idx is not None:
-                self.start(idx)
+            r = self.levelselect.update(inp)
+            if r == "menu":
+                self.scene = "menu"
+            elif r is not None:
+                self.start(r)
         elif self.scene == "calibrate":
-            if self.calibration.update(keys) == "menu":
+            if self.calibration.update(inp) == "menu":
                 self.scene = "menu"
         elif self.scene == "play":
-            self.update_play(keys, inp)
+            self.update_play(inp)
         elif self.scene == "level_done":
-            if inp.jump:
+            if inp.confirm:
                 if self.run.level_idx + 1 < len(LEVELS):
                     self.shop = Shop(self.run, self.game)
                     self.scene = "shop"
                 else:
                     self.scene = "victory"
         elif self.scene == "shop":
-            if self.shop.update(keys, inp) == "next":
+            if self.shop.update(inp) == "next":
                 self.begin_level(self.run.level_idx + 1)
-        elif inp.jump:  # game_over / victory
+        elif inp.confirm or inp.back:  # game_over / victory
             self.scene = "menu"
 
-    def update_play(self, keys, inp):
+    def update_play(self, inp):
         g, run = self.game, self.run
-        if pygame.K_r in keys:
-            self.new_attempt()
+        if inp.back:   # tres dedos na direita, segurado: abandona a fase
+            self.scene = "menu"
             return
         g.update(inp, DT)
         if g.state == "dead_done":
@@ -135,6 +141,19 @@ class App:
                 self.draw_hud(screen)
             else:
                 self.draw_end_panel(screen)
+        self.draw_holds(screen)
+
+    def draw_holds(self, screen):
+        """Barrinha de progresso enquanto um gesto de confirmar/voltar está sendo segurado."""
+        g = self.gestures
+        for hold, label, color in ((g.confirm, "confirmando (duas maos abertas)", YELLOW),
+                                   (g.back, "voltando (tres dedos direita)", BLUE)):
+            if hold.progress > 0:
+                bar = pygame.Rect(0, 0, 300, 14)
+                bar.center = (WIDTH // 2, HEIGHT - 40)
+                pygame.draw.rect(screen, (20, 20, 30), bar.inflate(8, 8), border_radius=6)
+                pygame.draw.rect(screen, color, (bar.x, bar.y, int(bar.w * hold.progress), bar.h), border_radius=4)
+                draw_text(screen, label, 20, color, (WIDTH // 2, HEIGHT - 62))
 
     def draw_hud(self, screen):
         g, run, cx = self.game, self.run, WIDTH // 2
@@ -173,19 +192,19 @@ class App:
             draw_text(screen, f"tempo  {fmt_time(g.elapsed)}", 32, WHITE, (cx, cy + 50))
             screen.blit(assets.COIN[0], (cx - 90, cy + 72))
             draw_text(screen, f"{g.collected}/{g.coins_total}   saldo {run.coins}", 30, YELLOW, (cx + 20, cy + 90))
-            hint = "ESPACO ou indicador direito: loja" if run.level_idx + 1 < len(LEVELS) else "ESPACO ou indicador direito"
+            hint = "duas maos abertas: loja" if run.level_idx + 1 < len(LEVELS) else "duas maos abertas: continuar"
         elif self.scene == "game_over":
             draw_text(screen, "GAME OVER", 80, RED, (cx, cy - 80))
             draw_text(screen, f"Voce chegou ate a fase {run.level_idx + 1}", 36, WHITE, (cx, cy))
             draw_text(screen, "o progresso das fases vencidas fica salvo", 22, DIM, (cx, cy + 40))
-            hint = "ESPACO ou indicador direito: menu"
+            hint = "duas maos abertas: menu"
         else:
             draw_text(screen, "VOCE ZEROU!", 80, YELLOW, (cx, cy - 100))
             draw_text(screen, f"tempo total  {fmt_time(run.total_time)}", 34, WHITE, (cx, cy - 30))
             draw_text(screen, f"moedas coletadas  {run.coins_total}", 34, YELLOW, (cx, cy + 10))
             total = sum(len(s) for s in self.progress["stars"].values())
             draw_text(screen, f"estrelas  {total}/{3 * len(LEVELS)}", 34, BLUE, (cx, cy + 50))
-            hint = "ESPACO ou indicador direito: menu"
+            hint = "duas maos abertas: menu"
         if int(self.t * 2) % 2 == 0:
             draw_text(screen, hint, 28, DIM, (cx, cy + 140))
 
@@ -199,17 +218,17 @@ def run():
     clock = pygame.time.Clock()
     start = int(sys.argv[1]) - 1 if len(sys.argv) > 1 else None
     app = App(start)
-    while True:
+    while not app.quit:
         events = pygame.event.get()
         for e in events:
             if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE
                                           and app.scene == "menu"):
-                app.tracker.stop()
-                pygame.quit()
-                return
-            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
+                app.quit = True
+            elif e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
                 app.scene = "menu"
         app.update(app.read_input(events), events)
         app.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+    app.tracker.stop()
+    pygame.quit()

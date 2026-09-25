@@ -1,6 +1,7 @@
 """Landmarks da mão -> gesto. Regras geométricas, sem rede neural, sem pygame.
 
 Duas mãos. Esquerda: INDEX (frente), THUMB (trás). Direita: INDEX (pulo). FIST/OPEN/NONE = parado.
+Menus: duas mãos OPEN seguradas = confirmar; THREE na direita = voltar; THREE na esquerda = pular passo.
 O polegar é ignorado quando o indicador está levantado: é o dedo que o modelo mais erra.
 """
 import json
@@ -11,7 +12,7 @@ CALIB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
                           "calibration.json")
 THRESH = {"fingers": 1.3, "thumb": 1.0}
 DEBOUNCE = 0.08   # s: gesto precisa ficar constante antes de virar comando (2-3 frames a 30 fps)
-GESTURES = ("OPEN", "INDEX", "THUMB", "FIST", "NONE")
+GESTURES = ("OPEN", "INDEX", "TWO", "THREE", "THUMB", "FIST", "NONE")
 SIDES = ("L", "R")
 FINGER_NAMES = ("polegar", "indicador", "medio", "anelar", "minimo")
 # ponta e articulação PIP de cada dedo (índices dos 21 landmarks do MediaPipe)
@@ -50,10 +51,15 @@ def classify(lm, thresh=THRESH):
     m = metrics(lm)
     ext = (m[0] > thresh["thumb"], *(x > thresh["fingers"] for x in m[1:]))
     thumb, index, others = ext[0], ext[1], ext[2:]
+    middle, ring, pinky = others
     if index and all(others):
         g = "OPEN"
     elif index and not any(others):          # polegar tanto faz
         g = "INDEX"
+    elif index and middle and not ring and not pinky:
+        g = "TWO"
+    elif index and middle and ring and not pinky:
+        g = "THREE"
     elif thumb and not index and not any(others):
         g = "THUMB"
     elif not thumb and not index and not any(others):
