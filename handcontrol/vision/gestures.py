@@ -1,6 +1,6 @@
 """Landmarks da mão -> gesto. Regras geométricas, sem rede neural, sem pygame.
 
-Duas mãos. Esquerda: INDEX (frente), THUMB (trás). Direita: INDEX (pulo). FIST/OPEN/NONE = parado.
+Duas mãos. Esquerda: INDEX (frente), THUMB (trás). Direita: INDEX ou THUMB (pulo). FIST/OPEN/NONE = parado.
 Menus: número de dedos na direita escolhe o item; sinal de OK (qualquer mão) segurado = confirmar;
 THREE na esquerda = voltar.
 O polegar é ignorado quando o indicador está levantado: é o dedo que o modelo mais erra.
@@ -13,10 +13,10 @@ CALIB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
                           "calibration.json")
 THRESH = {"fingers": 1.3, "thumb": 1.0}
 DEBOUNCE = 0.08   # s: gesto precisa ficar constante antes de virar comando (2-3 frames a 30 fps)
-GESTURES = ("OK", "FIVE", "OPEN", "INDEX", "ONE", "TWO", "THREE", "THUMB", "FIST", "NONE")
-ONE_FINGER = ("INDEX", "ONE")   # um dedo so levantado (qualquer um): pulo
+GESTURES = ("OK", "FIVE", "OPEN", "INDEX", "TWO", "THREE", "THUMB", "FIST", "NONE")
+JUMP = ("INDEX", "THUMB")   # mao direita: indicador, polegar ou os dois (INDEX ignora o polegar) = pulo
 OK_PINCH = 0.35   # ponta do polegar e do indicador mais perto que isso (em palmas) = círculo do OK
-COUNT = {"INDEX": 1, "ONE": 1, "TWO": 2, "THREE": 3, "OPEN": 4, "FIVE": 5}   # dedos levantados -> número
+COUNT = {"INDEX": 1, "TWO": 2, "THREE": 3, "OPEN": 4, "FIVE": 5}   # dedos levantados -> número
 SIDES = ("L", "R")
 FINGER_NAMES = ("polegar", "indicador", "medio", "anelar", "minimo")
 # ponta e articulação PIP de cada dedo (índices dos 21 landmarks do MediaPipe)
@@ -63,8 +63,6 @@ def classify(lm, thresh=THRESH):
         g = "FIVE" if thumb else "OPEN"
     elif index and not any(others):          # polegar tanto faz
         g = "INDEX"
-    elif not index and sum(others) == 1:     # um outro dedo sozinho (medio, anelar ou minimo)
-        g = "ONE"
     elif index and middle and not ring and not pinky:
         g = "TWO"
     elif index and middle and ring and not pinky:
