@@ -4,7 +4,7 @@ import zlib
 
 import pygame
 
-DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 SCALE = 2
 
 # tema -> (sheet, linhas de topo, linhas de preenchimento, colunas, decorações [(r,c)], colunas do fundo,
