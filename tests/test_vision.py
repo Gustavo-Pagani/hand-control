@@ -21,11 +21,10 @@ def test_classify():
     assert classify(_hand([1, 1, 1, 1], True))[0] == "OPEN"
     assert classify(_hand([1, 1, 1, 1], False))[0] == "OPEN"
     assert classify(_hand([1, 0, 0, 0], False))[0] == "INDEX"
+    assert classify(_hand([1, 0, 0, 0], True))[0] == "INDEX", "polegar nao atrapalha o indicador"
     assert classify(_hand([0, 0, 0, 0], True))[0] == "THUMB"
     assert classify(_hand([0, 0, 0, 0], False))[0] == "FIST"
     assert classify(_hand([1, 1, 0, 0], False))[0] == "NONE", "dois dedos nao e gesto"
-    assert classify(_hand([1, 0, 0, 0], True))[0] == "L", "indicador + polegar = L (pulo)"
-    assert classify(_hand([1, 1, 0, 0], True))[0] == "NONE"
 
 
 def test_debounce():
@@ -38,18 +37,14 @@ def test_debounce():
     assert d.stable == "FIST"
 
 
-def test_gesture_edge():
+def test_gesture_two_hands():
     gi = GestureInput()
-    jumps = [gi.read(s).jump for s in ("FIST", "L", "L", "FIST", "L", "NONE", "L", "OPEN")]
-    assert jumps == [False, True, False, False, True, False, True, False]
-    assert gi.read("INDEX").move == 1 and gi.read("THUMB").move == -1 and gi.read("OPEN").move == 0
-    gi.read("INDEX")
-    assert gi.read("L") == Input(1, True), "L vindo do indicador mantem a direcao e pula"
-    assert gi.read("L") == Input(1, False), "segurar o L nao pula de novo"
-    assert gi.read("FIST") == Input(0, False)
-    assert gi.read("L") == Input(0, True), "L vindo do punho pula parado"
-
-
+    seq = [("FIST", "FIST"), ("INDEX", "INDEX"), ("INDEX", "INDEX"), ("THUMB", "FIST"), ("NONE", "INDEX"),
+           ("FIST", "NONE"), ("INDEX", "INDEX")]
+    out = [gi.read({"L": l, "R": r}) for l, r in seq]
+    assert out == [Input(0, False), Input(1, True), Input(1, False), Input(-1, False), Input(0, True),
+                   Input(0, False), Input(1, True)]
+    assert gi.read({}) == Input(0, False), "sem tracker: nada"
 
 
 if __name__ == "__main__":

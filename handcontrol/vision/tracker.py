@@ -9,7 +9,7 @@ import os
 import threading
 import time
 
-from .gestures import Debouncer, classify, load_calibration
+from .gestures import SIDES, Debouncer, classify, load_calibration
 
 MODEL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                      "assets", "hand_landmarker.task")
@@ -42,11 +42,13 @@ class HandTracker(threading.Thread):
         super().__init__(daemon=True)
         self.camera = camera
         self.thresh = load_calibration()
-        self.debouncer = Debouncer()
-        self.gesture = self.stable = "NONE"
-        self.fingers = (False,) * 5
-        self.metrics = (0.0,) * 5
-        self.landmarks = None      # [(x, y) normalizados], ou None
+        self.debouncers = {s: Debouncer() for s in SIDES}
+        # por lado ("L" = mão da esquerda da tela, "R" = da direita); tudo reatribuído inteiro por frame
+        self.gesture = {s: "NONE" for s in SIDES}
+        self.stable = {s: "NONE" for s in SIDES}
+        self.fingers = {s: (False,) * 5 for s in SIDES}
+        self.metrics = {s: (0.0,) * 5 for s in SIDES}
+        self.landmarks = {}        # lado -> [(x, y) normalizados], só das mãos vistas neste frame
         self.preview = self.preview_big = None   # (bytes RGB, (w, h))
         self.want_big = False      # a cena de calibração liga; evita um resize a mais no jogo
         self.fps = 0.0
@@ -58,6 +60,29 @@ class HandTracker(threading.Thread):
 
     def stop(self):
         self._stop.set()
+
+    def _update_hands(self, res, now):
+        """Atribui lado a cada mão vista e classifica. 2 mãos: a mais à esquerda da tela é "L".
+        1 mão: usa a handedness do MediaPipe (a imagem já está espelhada, então o rótulo bate)."""
+        hands = [[(p.x, p.y) for p in h] for h in res.hand_landmarks]
+        if len(hands) >= 2:
+            hands = sorted(hands[:2], key=lambda lm: lm[0][0])
+            seen = dict(zip(SIDES, hands))
+        elif hands:
+            label = res.handedness[0][0].category_name if res.handedness and res.handedness[0] else ""
+            side = "L" if label == "Left" else "R" if label == "Right" else ("L" if hands[0][0][0] < 0.5 else "R")
+            seen = {side: hands[0]}
+        else:
+            seen = {}
+        gesture, fingers, metrics = dict(self.gesture), dict(self.fingers), dict(self.metrics)
+        for side in SIDES:
+            if side in seen:
+                gesture[side], fingers[side], metrics[side] = classify(seen[side], self.thresh)
+            else:
+                gesture[side] = "NONE"
+        self.landmarks = seen
+        self.gesture, self.fingers, self.metrics = gesture, fingers, metrics
+        self.stable = {s: self.debouncers[s].update(gesture[s], now) for s in SIDES}
 
     def run(self):
         self.status = "carregando mediapipe"
@@ -83,7 +108,7 @@ class HandTracker(threading.Thread):
         try:
             landmarker = HandLandmarker.create_from_options(HandLandmarkerOptions(
                 base_options=BaseOptions(model_asset_path=MODEL), running_mode=RunningMode.VIDEO,
-                num_hands=1, min_hand_detection_confidence=0.5, min_tracking_confidence=0.5))
+                num_hands=2, min_hand_detection_confidence=0.5, min_tracking_confidence=0.5))
         except Exception as e:  # noqa: BLE001 - qualquer falha do modelo vira mensagem na tela
             self.error = f"falha ao carregar o modelo: {e}"
             cap.release()
@@ -109,13 +134,7 @@ class HandTracker(threading.Thread):
                 now = time.monotonic()
                 res = landmarker.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb),
                                                   int((now - t0) * 1000))
-                if res.hand_landmarks:
-                    lm = [(p.x, p.y) for p in res.hand_landmarks[0]]
-                    self.gesture, self.fingers, self.metrics = classify(lm, self.thresh)
-                    self.landmarks = lm
-                else:
-                    self.gesture, self.landmarks = "NONE", None
-                self.stable = self.debouncer.update(self.gesture, now)
+                self._update_hands(res, now)
                 self.latency_ms = (time.monotonic() - t_cap) * 1000
                 self.preview = (cv2.resize(rgb, PREVIEW_SIZE).tobytes(), PREVIEW_SIZE)
                 if self.want_big:

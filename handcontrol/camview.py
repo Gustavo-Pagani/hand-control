@@ -1,12 +1,17 @@
-"""Desenha o preview da webcam com os landmarks e o gesto atual (HUD do jogo e tela de calibração)."""
+"""Desenha o preview da webcam com os landmarks das duas mãos e o comando de cada uma."""
 import pygame
 
 from .ui import BLUE, DIM, GREEN, PANEL, RED, WHITE, YELLOW, draw_text
 from .vision import CONNECTIONS
 
-GESTURE_COLOR = {"L": YELLOW, "INDEX": GREEN, "THUMB": BLUE, "OPEN": DIM, "FIST": DIM, "NONE": RED}
-GESTURE_LABEL = {"L": "POLEGAR + INDICADOR = pulo", "INDEX": "INDICADOR = frente", "THUMB": "POLEGAR = tras",
-                 "OPEN": "MAO ABERTA = parado", "FIST": "PUNHO = parado", "NONE": "sem mao"}
+# (cor, rótulo) por lado e gesto estável
+LEFT = {"INDEX": (GREEN, "frente"), "THUMB": (BLUE, "tras"), "NONE": (RED, "sem mao")}
+RIGHT = {"INDEX": (YELLOW, "pulo"), "NONE": (RED, "sem mao")}
+SIDE_NAME = {"L": "E", "R": "D"}
+
+
+def describe(side, gesture):
+    return (LEFT if side == "L" else RIGHT).get(gesture, (DIM, "parado"))
 
 
 def draw_camera(screen, tracker, x, y, big=False):
@@ -20,13 +25,17 @@ def draw_camera(screen, tracker, x, y, big=False):
         return
     raw, (w, h) = data
     screen.blit(pygame.image.frombuffer(raw, (w, h), "RGB"), (x, y))
-    if tracker.landmarks:
-        pts = [(x + int(px * w), y + int(py * h)) for px, py in tracker.landmarks]
+    pygame.draw.line(screen, DIM, (x + w // 2, y), (x + w // 2, y + h), 1)
+    for side, lm in tracker.landmarks.items():
+        color, _ = describe(side, tracker.stable[side])
+        pts = [(x + int(px * w), y + int(py * h)) for px, py in lm]
         for a, b in CONNECTIONS:
             pygame.draw.line(screen, WHITE, pts[a], pts[b], 2)
         for p in pts:
-            pygame.draw.circle(screen, GREEN, p, 4 if big else 3)
-    color = GESTURE_COLOR[tracker.stable]
-    pygame.draw.rect(screen, color, (x, y, w, h), 3)
-    label = GESTURE_LABEL[tracker.stable] if big else tracker.stable
-    draw_text(screen, label, 30 if big else 24, color, (x + w // 2, y + h - (22 if big else 14)))
+            pygame.draw.circle(screen, color, p, 4 if big else 3)
+        draw_text(screen, SIDE_NAME[side], 26 if big else 20, color, (pts[0][0], pts[0][1] + (18 if big else 12)))
+    pygame.draw.rect(screen, DIM, (x, y, w, h), 3)
+    size, dy = (30, 22) if big else (22, 12)
+    for side, cx in (("L", x + w // 4), ("R", x + 3 * w // 4)):
+        color, label = describe(side, tracker.stable[side])
+        draw_text(screen, f"{SIDE_NAME[side]}: {label}", size, color, (cx, y + h - dy))

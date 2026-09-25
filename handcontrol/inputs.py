@@ -18,27 +18,22 @@ def read_keyboard(events) -> Input:
 
 
 class GestureInput:
-    """Gesto estável -> Input.
+    """Gestos estáveis das duas mãos -> Input.
 
-    INDEX anda para frente, THUMB para trás, L (polegar+indicador) pula uma vez na borda de subida.
-    Durante o L a direção anterior é mantida, senão não dá para pular buracos; do punho direto
-    para o L o pulo é parado. FIST, OPEN e NONE param.
+    Mão esquerda: INDEX anda para frente, THUMB para trás, resto para.
+    Mão direita: INDEX pula uma vez na borda de subida (segurar não repete).
     """
 
     MOVE = {"INDEX": 1, "THUMB": -1}
 
     def __init__(self):
-        self.prev = "NONE"
-        self.hold_dir = 0
+        self.prev_right = "NONE"
 
-    def read(self, stable: str) -> Input:
-        jump = stable == "L" and self.prev != "L"
-        self.prev = stable
-        if stable == "L":
-            move = self.hold_dir
-        else:
-            move = self.hold_dir = self.MOVE.get(stable, 0)
-        return Input(move, jump)
+    def read(self, stable: dict) -> Input:
+        right = stable.get("R", "NONE")
+        jump = right == "INDEX" and self.prev_right != "INDEX"
+        self.prev_right = right
+        return Input(self.MOVE.get(stable.get("L", "NONE"), 0), jump)
 
 
 def merge(a: Input, b: Input) -> Input:

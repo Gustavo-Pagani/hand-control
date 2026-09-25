@@ -47,7 +47,7 @@ class App:
 
     def read_input(self, events) -> Input:
         tr = self.tracker
-        stable = tr.stable if tr.ready and not tr.error else "NONE"
+        stable = tr.stable if tr.ready and not tr.error else {}
         return merge(read_keyboard(events), self.gestures.read(stable))
 
     def update(self, inp, events):
@@ -134,17 +134,17 @@ class App:
             draw_text(screen, f"tempo  {fmt_time(g.elapsed)}", 38, WHITE, (cx, cy + 5))
             screen.blit(assets.COIN[0], (cx - 80, cy + 27))
             draw_text(screen, f"{g.collected}/{g.coins_total}", 38, YELLOW, (cx + 10, cy + 45))
-            hint = "ESPACO ou POLEGAR+INDICADOR para continuar"
+            hint = "ESPACO ou INDICADOR DIREITO para continuar"
         elif self.scene == "game_over":
             draw_text(screen, "GAME OVER", 80, RED, (cx, cy - 80))
             draw_text(screen, f"Voce chegou ate a fase {self.level_idx + 1}", 38, WHITE, (cx, cy))
-            hint = "ESPACO ou POLEGAR+INDICADOR para o menu"
+            hint = "ESPACO ou INDICADOR DIREITO para o menu"
         else:
             draw_text(screen, "VOCE ZEROU!", 80, YELLOW, (cx, cy - 90))
             draw_text(screen, f"tempo total  {fmt_time(self.total_time)}", 38, WHITE, (cx, cy - 15))
             screen.blit(assets.COIN[0], (cx - 80, cy + 7))
             draw_text(screen, f"{self.total_coins}/{self.total_coins_max}", 38, YELLOW, (cx + 10, cy + 25))
-            hint = "ESPACO ou POLEGAR+INDICADOR para o menu"
+            hint = "ESPACO ou INDICADOR DIREITO para o menu"
         if int(self.t * 2) % 2 == 0:
             draw_text(screen, hint, 32, DIM, (cx, cy + 120))
 
