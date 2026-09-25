@@ -1,6 +1,6 @@
 """Landmarks da mão -> gesto. Regras geométricas, sem rede neural, sem pygame.
 
-Gestos: FIST (parado), OPEN (pulo), INDEX (frente), THUMB (trás), NONE (sem mão / indefinido).
+Gestos: INDEX (frente), THUMB (trás), L = polegar+indicador (pulo), FIST/OPEN/NONE (parado).
 """
 import json
 import math
@@ -10,7 +10,7 @@ CALIB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
                           "calibration.json")
 THRESH = {"fingers": 1.3, "thumb": 1.0}
 DEBOUNCE = 0.08   # s: gesto precisa ficar constante antes de virar comando (2-3 frames a 30 fps)
-GESTURES = ("OPEN", "INDEX", "THUMB", "FIST", "NONE")
+GESTURES = ("OPEN", "INDEX", "THUMB", "L", "FIST", "NONE")
 FINGER_NAMES = ("polegar", "indicador", "medio", "anelar", "minimo")
 # ponta e articulação PIP de cada dedo (índices dos 21 landmarks do MediaPipe)
 TIPS, PIPS = (8, 12, 16, 20), (6, 10, 14, 18)
@@ -54,6 +54,8 @@ def classify(lm, thresh=THRESH):
         g = "INDEX"
     elif thumb and not index and not any(others):
         g = "THUMB"
+    elif thumb and index and not any(others):
+        g = "L"
     elif not thumb and not index and not any(others):
         g = "FIST"
     else:

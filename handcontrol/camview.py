@@ -4,9 +4,9 @@ import pygame
 from .ui import BLUE, DIM, GREEN, PANEL, RED, WHITE, YELLOW, draw_text
 from .vision import CONNECTIONS
 
-GESTURE_COLOR = {"OPEN": YELLOW, "INDEX": GREEN, "THUMB": BLUE, "FIST": DIM, "NONE": RED}
-GESTURE_LABEL = {"OPEN": "MAO ABERTA = pulo", "INDEX": "INDICADOR = frente", "THUMB": "POLEGAR = tras",
-                 "FIST": "PUNHO = parado", "NONE": "sem mao"}
+GESTURE_COLOR = {"L": YELLOW, "INDEX": GREEN, "THUMB": BLUE, "OPEN": DIM, "FIST": DIM, "NONE": RED}
+GESTURE_LABEL = {"L": "POLEGAR + INDICADOR = pulo", "INDEX": "INDICADOR = frente", "THUMB": "POLEGAR = tras",
+                 "OPEN": "MAO ABERTA = parado", "FIST": "PUNHO = parado", "NONE": "sem mao"}
 
 
 def draw_camera(screen, tracker, x, y, big=False):

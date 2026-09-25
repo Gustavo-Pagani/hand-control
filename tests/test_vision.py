@@ -1,5 +1,5 @@
 """Checagem da visão sem abrir câmera: python -m tests.test_vision"""
-from handcontrol.inputs import GestureInput
+from handcontrol.inputs import GestureInput, Input
 from handcontrol.vision import Debouncer, classify
 
 
@@ -24,7 +24,8 @@ def test_classify():
     assert classify(_hand([0, 0, 0, 0], True))[0] == "THUMB"
     assert classify(_hand([0, 0, 0, 0], False))[0] == "FIST"
     assert classify(_hand([1, 1, 0, 0], False))[0] == "NONE", "dois dedos nao e gesto"
-    assert classify(_hand([1, 0, 0, 0], True))[0] == "NONE", "indicador + polegar nao e gesto"
+    assert classify(_hand([1, 0, 0, 0], True))[0] == "L", "indicador + polegar = L (pulo)"
+    assert classify(_hand([1, 1, 0, 0], True))[0] == "NONE"
 
 
 def test_debounce():
@@ -39,9 +40,14 @@ def test_debounce():
 
 def test_gesture_edge():
     gi = GestureInput()
-    jumps = [gi.read(s).jump for s in ("FIST", "OPEN", "OPEN", "FIST", "OPEN", "NONE", "OPEN")]
-    assert jumps == [False, True, False, False, True, False, True]
+    jumps = [gi.read(s).jump for s in ("FIST", "L", "L", "FIST", "L", "NONE", "L", "OPEN")]
+    assert jumps == [False, True, False, False, True, False, True, False]
     assert gi.read("INDEX").move == 1 and gi.read("THUMB").move == -1 and gi.read("OPEN").move == 0
+    gi.read("INDEX")
+    assert gi.read("L") == Input(1, True), "L vindo do indicador mantem a direcao e pula"
+    assert gi.read("L") == Input(1, False), "segurar o L nao pula de novo"
+    assert gi.read("FIST") == Input(0, False)
+    assert gi.read("L") == Input(0, True), "L vindo do punho pula parado"
 
 
 

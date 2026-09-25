@@ -8,10 +8,11 @@ from .config import DT
 from .ui import DIM, GREEN, RED, SHADOW, WHITE, YELLOW, dim, draw_panel, draw_text
 from .vision import FINGER_NAMES, save_calibration
 
-STEPS = [("FIST", "PUNHO", "feche a mao (gesto de parado)"),
-         ("OPEN", "MAO ABERTA", "abra a mao, dedos separados (pulo)"),
+STEPS = [("FIST", "PUNHO", "feche a mao (parado)"),
+         ("OPEN", "MAO ABERTA", "abra a mao, dedos separados (parado)"),
          ("INDEX", "INDICADOR", "so o indicador levantado (frente)"),
-         ("THUMB", "POLEGAR", "so o polegar levantado, joinha (tras)")]
+         ("THUMB", "POLEGAR", "so o polegar levantado, joinha (tras)"),
+         ("L", "POLEGAR + INDICADOR", "os dois levantados, mao em L (pulo)")]
 HOLD = 1.0  # s segurando o gesto certo para o passo contar
 
 
@@ -114,9 +115,10 @@ class Calibration:
             draw_text(screen, f"{mark}  {i + 1}. {name}", 30, color, (px + 24, py + 20 + i * 36), align="topleft")
         if self.done:
             ok = sum(self.results.values())
-            draw_text(screen, "Calibrado!" if ok == 4 else "Concluido", 44, GREEN if ok == 4 else YELLOW,
+            n = len(STEPS)
+            draw_text(screen, "Calibrado!" if ok == n else "Concluido", 44, GREEN if ok == n else YELLOW,
                       (px + 240, py + 200))
-            draw_text(screen, f"{ok}/4 gestos reconhecidos", 30, WHITE, (px + 240, py + 240))
+            draw_text(screen, f"{ok}/{n} gestos reconhecidos", 30, WHITE, (px + 240, py + 240))
             th = self.thresh or tr.thresh
             draw_text(screen, f"limiar dedos {th['fingers']:.2f}   polegar {th['thumb']:.2f}", 24, DIM,
                       (px + 240, py + 275))
