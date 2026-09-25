@@ -135,19 +135,19 @@ class Calibration:
             draw_text(screen, "duas maos abertas: voltar ao menu", 26, DIM, (px + 240, py + 430))
             return
         side, _, name, hint = STEPS[self.step]
-        draw_text(screen, f"Mostre: {name}", 36, YELLOW, (px + 240, py + 205))
-        draw_text(screen, hint, 22, WHITE, (px + 240, py + 240))
-        bar = pygame.Rect(px + 60, py + 264, 360, 22)
+        draw_text(screen, f"Mostre: {name}", 36, YELLOW, (px + 240, py + 240))
+        draw_text(screen, hint, 22, WHITE, (px + 240, py + 272))
+        bar = pygame.Rect(px + 60, py + 294, 360, 22)
         pygame.draw.rect(screen, SHADOW, bar)
         pygame.draw.rect(screen, GREEN, (bar.x, bar.y, int(bar.w * min(self.hold / HOLD, 1)), bar.h))
         pygame.draw.rect(screen, DIM, bar, 2)
-        draw_text(screen, f"segure o gesto: {SIDE_NAME[side]}", 20, DIM, (px + 240, py + 302))
+        draw_text(screen, f"segure o gesto: {SIDE_NAME[side]}", 20, DIM, (px + 240, py + 330))
         fside = "R" if side == "B" else side
         for i, (fname, ext, m) in enumerate(zip(FINGER_NAMES, tr.fingers[fside], tr.metrics[fside])):
             cx = px + 60 + i * 90
-            pygame.draw.circle(screen, GREEN if ext else (70, 70, 85), (cx, py + 350), 14)
-            pygame.draw.circle(screen, DIM, (cx, py + 350), 14, 2)
-            draw_text(screen, fname, 18, DIM, (cx, py + 378))
-            draw_text(screen, f"{m:.2f}", 18, DIM, (cx, py + 396))
+            pygame.draw.circle(screen, GREEN if ext else (70, 70, 85), (cx, py + 372), 14)
+            pygame.draw.circle(screen, DIM, (cx, py + 372), 14, 2)
+            draw_text(screen, fname, 18, DIM, (cx, py + 398))
+            draw_text(screen, f"{m:.2f}", 18, DIM, (cx, py + 416))
         draw_text(screen, "tres dedos esquerda (segure): pula o passo   tres dedos direita: volta", 20, DIM,
                   (px + 240, py + 440))
