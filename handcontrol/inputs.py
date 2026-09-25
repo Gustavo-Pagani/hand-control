@@ -53,13 +53,15 @@ class Hold:
 class GestureInput:
     """Gestos estáveis das duas mãos -> Input.
 
-    Jogo: esquerda INDEX anda para frente, THUMB para trás, resto para; direita INDEX pula uma vez (borda).
+    Jogo: esquerda INDEX anda para frente, THUMB para trás, resto para; direita com um dedo só levantado
+    (qualquer dedo) pula uma vez (borda).
     Menus: número de dedos da direita escolhe o item (select); sinal de OK em qualquer mão, segurado, confirma;
     THREE na esquerda segurado volta.
     """
 
     MOVE = {"INDEX": 1, "THUMB": -1}
-    COUNT = {"INDEX": 1, "TWO": 2, "THREE": 3, "OPEN": 4, "FIVE": 5}
+    COUNT = {"INDEX": 1, "ONE": 1, "TWO": 2, "THREE": 3, "OPEN": 4, "FIVE": 5}
+    ONE_FINGER = ("INDEX", "ONE")
 
     def __init__(self, confirm_seconds=0.6, back_seconds=0.8):
         self.prev_right = "NONE"
@@ -68,7 +70,7 @@ class GestureInput:
 
     def read(self, stable: dict, dt: float = 1 / 60) -> Input:
         left, right = stable.get("L", "NONE"), stable.get("R", "NONE")
-        jump = right == "INDEX" and self.prev_right != "INDEX"
+        jump = right in self.ONE_FINGER and self.prev_right not in self.ONE_FINGER
         self.prev_right = right
         confirm = self.confirm.update(left == "OK" or right == "OK", dt)
         back = self.back.update(left == "THREE", dt)

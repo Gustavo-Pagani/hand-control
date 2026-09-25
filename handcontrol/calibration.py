@@ -12,7 +12,7 @@ from .vision import FINGER_NAMES, save_calibration
 # (lado, gesto, nome curto, instrução)
 STEPS = [("L", "INDEX", "FRENTE", "mao esquerda, so o indicador levantado"),
          ("L", "THUMB", "TRAS", "mao esquerda, so o polegar, joinha"),
-         ("R", "INDEX", "PULO", "mao direita, so o indicador levantado"),
+         ("R", "INDEX", "PULO", "mao direita, so um dedo levantado (o indicador para calibrar)"),
          ("A", "OK", "OK", "polegar e indicador em circulo, outros dedos abertos (qualquer mao)")]
 HOLD = 1.0  # s segurando o gesto certo para o passo contar
 SIDE_NAME = {"L": "esquerda", "R": "direita", "A": "qualquer mao"}

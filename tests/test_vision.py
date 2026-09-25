@@ -33,6 +33,8 @@ def test_classify():
     assert classify(_hand([1, 1, 0, 0], False))[0] == "TWO"
     assert classify(_hand([1, 1, 1, 0], True))[0] == "THREE", "polegar nao atrapalha o tres"
     assert classify(_hand([1, 0, 1, 1], False))[0] == "NONE", "combinacao sem sentido"
+    assert classify(_hand([0, 1, 0, 0], True))[0] == "ONE", "so o medio = um dedo"
+    assert classify(_hand([0, 0, 0, 1], False))[0] == "ONE", "so o minimo = um dedo"
     assert classify(_ok_hand())[0] == "OK"
     assert classify(_hand([0, 1, 1, 1], False))[0] == "NONE", "tres dedos sem o circulo nao e OK"
 
@@ -56,6 +58,9 @@ def test_gesture_two_hands():
     assert out == [Input(0, False), Input(1, True, **one), Input(1, False, **one), Input(-1, False),
                    Input(0, True, **one), Input(0, False), Input(1, True, **one)]
     assert gi.read({}) == Input(0, False), "sem tracker: nada"
+    gi = GestureInput()
+    seq = [gi.read({"R": g}).jump for g in ("FIST", "ONE", "ONE", "INDEX", "TWO", "ONE", "FIST", "INDEX")]
+    assert seq == [False, True, False, False, False, True, False, True], "qualquer dedo sozinho pula; trocar de dedo sem passar por outro estado nao repete"
 
 
 def test_hold_confirm_and_back():
